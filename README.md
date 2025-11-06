@@ -7,7 +7,7 @@ A secure, terminal-based password manager built with Go. Store and manage your p
 
 ## Installation
 
-### Quick Install (One-Liner)
+### Quick Install
 
 Install directly from GitHub using curl:
 
@@ -22,7 +22,7 @@ This will:
 - Create convenient aliases (`openpass` and `pw`)
 - Set up shell completions for bash and zsh
 
-### Using Install Script (Alternative)
+### Using Install Scripts
 
 ```bash
 # Clone the repository
@@ -60,6 +60,12 @@ openpasswd list
 # Configure settings (MFA, passphrase, etc.)
 openpasswd settings set-totp
 openpasswd settings set-passphrase
+
+# Check version and updates
+openpasswd version --check
+
+# Upgrade to latest version
+openpasswd upgrade
 ```
 
 ## Usage
@@ -70,7 +76,18 @@ openpasswd settings set-passphrase
 - `openpasswd add` - Add a new password entry
 - `openpasswd list` - List and search passwords
 - `openpasswd settings` - Manage settings (passphrase, MFA, etc.)
+- `openpasswd version` - Show version information
+- `openpasswd upgrade` - Upgrade to the latest version
 - `openpasswd help` - Show help message
+
+### Version Commands
+
+```bash
+openpasswd version              # Show version number
+openpasswd version --verbose    # Show detailed build information
+openpasswd version --check      # Check for updates
+openpasswd upgrade              # Upgrade to latest version
+```
 
 ## Supported Password Types
 
@@ -103,6 +120,43 @@ openpasswd settings set-passphrase  # Set master passphrase
 openpasswd settings set-totp         # Enable TOTP
 openpasswd settings set-yubikey      # Enable YubiKey
 ```
+
+## Development
+
+### Building from Source
+
+Using Make (recommended):
+```bash
+make build          # Build with version information
+make install        # Build and install to /usr/local/bin
+make version        # Show version info
+make clean          # Clean build artifacts
+```
+
+Using Go directly:
+```bash
+# Simple build
+go build -o openpasswd ./cmd/openpasswd
+
+# Build with version information
+VERSION="0.1.0"
+GIT_COMMIT=$(git rev-parse --short HEAD)
+BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
+                    -X 'github.com/r2unit/openpasswd/pkg/version.GitCommit=${GIT_COMMIT}' \
+                    -X 'github.com/r2unit/openpasswd/pkg/version.BuildDate=${BUILD_DATE}'" \
+         -o openpasswd ./cmd/openpasswd
+```
+
+### Cross-Compilation
+
+Build for multiple platforms:
+```bash
+make cross-compile  # Builds for Linux, macOS, and Windows
+```
+
+Binaries will be created in the `./dist/` directory.
 
 ## Contributing
 

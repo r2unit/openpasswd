@@ -10,6 +10,7 @@ import (
 	"github.com/r2unit/openpasswd/pkg/mfa"
 	_ "github.com/r2unit/openpasswd/pkg/proton/pass" // Register Proton Pass provider
 	"github.com/r2unit/openpasswd/pkg/tui"
+	"github.com/r2unit/openpasswd/pkg/version"
 )
 
 func main() {
@@ -48,6 +49,10 @@ func main() {
 		handleList()
 	case "settings":
 		handleSettings()
+	case "version", "--version", "-v":
+		handleVersion()
+	case "upgrade":
+		handleUpgrade()
 	case "help", "--help", "-h":
 		showHelp()
 	default:
@@ -144,10 +149,13 @@ COMMANDS:
     openpasswd add               Add a new password entry
     openpasswd list              List and search passwords
     openpasswd settings          Manage settings (passphrase, MFA, etc.)
+    openpasswd version           Show version information
+    openpasswd upgrade           Upgrade to the latest version
     openpasswd help              Show this help message
 
 OPTIONS:
     --help, -h                   Show this help message
+    --version, -v                Show version number
 
 EXAMPLES:
     openpasswd init                             # First-time setup
@@ -157,6 +165,9 @@ EXAMPLES:
     openpasswd settings set-passphrase          # Set master passphrase
     openpasswd settings set-totp                # Enable TOTP authentication
     openpasswd settings set-yubikey             # Enable YubiKey authentication
+    openpasswd version --verbose                # Show detailed version info
+    openpasswd version --check                  # Check for updates
+    openpasswd upgrade                          # Upgrade to latest version
 
 CONFIGURATION:
     ~/.config/openpasswd/passwords.db    Encrypted password database
@@ -860,4 +871,84 @@ EXAMPLES:
     openpass settings show-totp-qr        # Re-display QR code
 `
 	fmt.Println(help)
+}
+
+// handleVersion displays version information
+func handleVersion() {
+	info := version.GetInfo()
+
+	// Display basic version
+	fmt.Printf("OpenPasswd v%s\n", info.Version)
+
+	// Check for --verbose flag
+	if len(os.Args) > 2 && (os.Args[2] == "--verbose" || os.Args[2] == "-v") {
+		fmt.Printf("\nBuild Information:\n")
+		fmt.Printf("  Git Commit:  %s\n", info.GitCommit)
+		fmt.Printf("  Build Date:  %s\n", info.BuildDate)
+		fmt.Printf("  Go Version:  %s\n", info.GoVersion)
+		fmt.Printf("  Platform:    %s\n", info.Platform)
+	}
+
+	// Check for updates
+	if len(os.Args) > 2 && os.Args[2] == "--check" {
+		fmt.Println("\nChecking for updates...")
+		release, updateAvailable, err := version.CheckForUpdate()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorWarning("Failed to check for updates: %v\n"), err)
+			return
+		}
+
+		if updateAvailable && release != nil {
+			fmt.Printf(tui.ColorWarning("\n⚠  Update available: v%s (you have v%s)\n"), release.TagName, info.Version)
+			fmt.Printf(tui.ColorInfo("Run 'openpasswd upgrade' to update\n"))
+		} else {
+			fmt.Printf(tui.ColorSuccess("\n✓ You are running the latest version (v%s)\n"), info.Version)
+		}
+	}
+}
+
+// handleUpgrade performs an automatic upgrade
+func handleUpgrade() {
+	fmt.Println(tui.ColorInfo("Checking for updates..."))
+
+	release, updateAvailable, err := version.CheckForUpdate()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Failed to check for updates: %v\n", err)))
+		os.Exit(1)
+	}
+
+	if !updateAvailable {
+		fmt.Printf(tui.ColorSuccess("✓ You are already running the latest version (v%s)\n"), version.Version)
+		return
+	}
+
+	if release != nil {
+		fmt.Printf(tui.ColorInfo("\nNew version available: v%s\n"), release.TagName)
+		fmt.Printf(tui.ColorInfo("Current version: v%s\n\n"), version.Version)
+
+		// Show release notes if available
+		if release.Body != "" {
+			fmt.Println(tui.ColorInfo("Release Notes:"))
+			fmt.Println(tui.ColorInfo("─────────────────────────────────────────"))
+			fmt.Println(release.Body)
+			fmt.Println(tui.ColorInfo("─────────────────────────────────────────"))
+			fmt.Println()
+		}
+	}
+
+	// Confirm upgrade
+	fmt.Print("Do you want to upgrade? (yes/no): ")
+	var confirm string
+	fmt.Scanln(&confirm)
+
+	if confirm != "yes" && confirm != "y" {
+		fmt.Println(tui.ColorInfo("Upgrade cancelled."))
+		return
+	}
+
+	fmt.Println()
+	if err := version.Upgrade(); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Upgrade failed: %v\n", err)))
+		os.Exit(1)
+	}
 }

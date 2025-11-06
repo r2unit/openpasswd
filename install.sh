@@ -11,6 +11,7 @@ INSTALL_DIR="/usr/local/bin"
 COMPLETION_DIR_BASH="/etc/bash_completion.d"
 COMPLETION_DIR_ZSH="/usr/local/share/zsh/site-functions"
 REPO_URL="https://github.com/r2unit/openpasswd"
+REPO_API_URL="https://api.github.com/repos/r2unit/openpasswd"
 TEMP_DIR=""
 
 COLOR_GREEN='\033[0;32m'
@@ -30,6 +31,146 @@ cleanup() {
 # Set trap to cleanup on exit
 trap cleanup EXIT
 
+# Detect OS and architecture
+detect_platform() {
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+    
+    case "$OS" in
+        linux*)
+            OS="linux"
+            ;;
+        darwin*)
+            OS="darwin"
+            ;;
+        mingw*|msys*|cygwin*)
+            OS="windows"
+            ;;
+        *)
+            echo -e "${COLOR_RED}✗ Unsupported operating system: $OS${COLOR_RESET}"
+            exit 1
+            ;;
+    esac
+    
+    case "$ARCH" in
+        x86_64|amd64)
+            ARCH="amd64"
+            ;;
+        aarch64|arm64)
+            ARCH="arm64"
+            ;;
+        armv7l)
+            ARCH="arm"
+            ;;
+        *)
+            echo -e "${COLOR_RED}✗ Unsupported architecture: $ARCH${COLOR_RESET}"
+            exit 1
+            ;;
+    esac
+    
+    if [ "$OS" = "windows" ]; then
+        BINARY_EXT=".exe"
+    else
+        BINARY_EXT=""
+    fi
+    
+    PLATFORM_BINARY="openpasswd-${OS}-${ARCH}${BINARY_EXT}"
+}
+
+# Get latest release version from GitHub
+get_latest_version() {
+    echo -e "${COLOR_BLUE}Fetching latest release information...${COLOR_RESET}"
+    
+    RELEASE_JSON=$(curl -sL "${REPO_API_URL}/releases/latest")
+    
+    if echo "$RELEASE_JSON" | grep -q "Not Found"; then
+        echo -e "${COLOR_YELLOW}⚠  No releases found. Building from source...${COLOR_RESET}"
+        return 1
+    fi
+    
+    LATEST_VERSION=$(echo "$RELEASE_JSON" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+    DOWNLOAD_URL="${REPO_URL}/releases/download/${LATEST_VERSION}/${PLATFORM_BINARY}"
+    CHECKSUM_URL="${REPO_URL}/releases/download/${LATEST_VERSION}/${PLATFORM_BINARY}.sha256"
+    
+    if [ -z "$LATEST_VERSION" ]; then
+        echo -e "${COLOR_YELLOW}⚠  Could not determine latest version. Building from source...${COLOR_RESET}"
+        return 1
+    fi
+    
+    echo -e "${COLOR_GREEN}Latest version: ${LATEST_VERSION}${COLOR_RESET}"
+    return 0
+}
+
+# Download pre-built binary
+download_binary() {
+    TEMP_DIR=$(mktemp -d)
+    echo -e "${COLOR_BLUE}Downloading ${PLATFORM_BINARY}...${COLOR_RESET}"
+    
+    if ! curl -sSL -f "$DOWNLOAD_URL" -o "${TEMP_DIR}/${BINARY_NAME}"; then
+        echo -e "${COLOR_YELLOW}⚠  Failed to download pre-built binary${COLOR_RESET}"
+        return 1
+    fi
+    
+    # Download and verify checksum if available
+    if curl -sSL -f "$CHECKSUM_URL" -o "${TEMP_DIR}/${BINARY_NAME}.sha256" 2>/dev/null; then
+        echo -e "${COLOR_BLUE}Verifying checksum...${COLOR_RESET}"
+        cd "${TEMP_DIR}"
+        if sha256sum -c "${BINARY_NAME}.sha256" 2>/dev/null; then
+            echo -e "${COLOR_GREEN}✓ Checksum verified${COLOR_RESET}"
+        else
+            echo -e "${COLOR_YELLOW}⚠  Checksum verification failed${COLOR_RESET}"
+        fi
+        cd - > /dev/null
+    fi
+    
+    chmod +x "${TEMP_DIR}/${BINARY_NAME}"
+    echo -e "${COLOR_GREEN}✓ Download complete${COLOR_RESET}"
+    return 0
+}
+
+# Build from source
+build_from_source() {
+    echo -e "${COLOR_BLUE}Building from source...${COLOR_RESET}"
+    
+    if ! command -v go &> /dev/null; then
+        echo -e "${COLOR_RED}✗ Error: Go is not installed${COLOR_RESET}"
+        echo -e "${COLOR_YELLOW}  Please install Go from https://golang.org/dl/${COLOR_RESET}"
+        exit 1
+    fi
+    
+    if ! command -v git &> /dev/null; then
+        echo -e "${COLOR_RED}✗ Error: Git is not installed${COLOR_RESET}"
+        echo -e "${COLOR_YELLOW}  Please install Git and try again${COLOR_RESET}"
+        exit 1
+    fi
+    
+    TEMP_DIR=$(mktemp -d)
+    echo -e "${COLOR_BLUE}Cloning repository...${COLOR_RESET}"
+    git clone --depth 1 "$REPO_URL" "$TEMP_DIR" 2>&1 | grep -v "Cloning into" || true
+    
+    cd "$TEMP_DIR"
+    
+    # Get version info for build
+    VERSION=$(grep 'Version = ' pkg/version/version.go | sed 's/.*"\(.*\)".*/\1/' || echo "dev")
+    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+    
+    echo -e "${COLOR_BLUE}Building version ${VERSION} (commit: ${GIT_COMMIT})...${COLOR_RESET}"
+    go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
+                        -X 'github.com/r2unit/openpasswd/pkg/version.GitCommit=${GIT_COMMIT}' \
+                        -X 'github.com/r2unit/openpasswd/pkg/version.BuildDate=${BUILD_DATE}'" \
+             -o "$BINARY_NAME" ./cmd/openpasswd
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${COLOR_GREEN}✓ Build successful${COLOR_RESET}"
+    else
+        echo -e "${COLOR_RED}✗ Build failed${COLOR_RESET}"
+        exit 1
+    fi
+    
+    cd - > /dev/null
+}
+
 echo -e "${COLOR_BLUE}╔══════════════════════════════════════════════════════════════╗${COLOR_RESET}"
 echo -e "${COLOR_BLUE}║                                                              ║${COLOR_RESET}"
 echo -e "${COLOR_BLUE}║                  OpenPasswd Installer                        ║${COLOR_RESET}"
@@ -44,45 +185,24 @@ if [ "$EUID" -ne 0 ]; then
     echo ""
 fi
 
-# Check if we're in the repo directory or need to clone
-if [ -f "./cmd/openpasswd/main.go" ]; then
-    echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} Building from current directory..."
-    BUILD_DIR="."
+echo -e "${COLOR_BLUE}[1/4]${COLOR_RESET} Detecting platform..."
+detect_platform
+echo -e "${COLOR_GREEN}✓ Platform: ${OS}/${ARCH}${COLOR_RESET}"
+
+echo ""
+echo -e "${COLOR_BLUE}[2/4]${COLOR_RESET} Getting OpenPasswd binary..."
+
+# Try to download pre-built binary first
+if get_latest_version && download_binary; then
+    echo -e "${COLOR_GREEN}✓ Using pre-built binary${COLOR_RESET}"
 else
-    echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} Cloning repository from GitHub..."
-    
-    if ! command -v git &> /dev/null; then
-        echo -e "${COLOR_RED}✗ Error: Git is not installed${COLOR_RESET}"
-        echo -e "${COLOR_YELLOW}  Please install Git and try again${COLOR_RESET}"
-        exit 1
-    fi
-    
-    TEMP_DIR=$(mktemp -d)
-    echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} Cloning into $TEMP_DIR..."
-    git clone --depth 1 "$REPO_URL" "$TEMP_DIR" 2>&1 | grep -v "Cloning into" || true
-    BUILD_DIR="$TEMP_DIR"
+    # Fall back to building from source
+    build_from_source
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[1/4]${COLOR_RESET} Building OpenPasswd..."
-if ! command -v go &> /dev/null; then
-    echo -e "${COLOR_RED}✗ Error: Go is not installed${COLOR_RESET}"
-    echo -e "${COLOR_YELLOW}  Please install Go from https://golang.org/dl/${COLOR_RESET}"
-    exit 1
-fi
-
-cd "$BUILD_DIR"
-go build -o "$BINARY_NAME" ./cmd/openpasswd
-if [ $? -eq 0 ]; then
-    echo -e "${COLOR_GREEN}✓ Build successful${COLOR_RESET}"
-else
-    echo -e "${COLOR_RED}✗ Build failed${COLOR_RESET}"
-    exit 1
-fi
-
-echo ""
-echo -e "${COLOR_BLUE}[2/4]${COLOR_RESET} Installing binary to $INSTALL_DIR..."
-sudo cp "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+echo -e "${COLOR_BLUE}[3/4]${COLOR_RESET} Installing binary to $INSTALL_DIR..."
+sudo cp "${TEMP_DIR}/${BINARY_NAME}" "$INSTALL_DIR/$BINARY_NAME"
 sudo chmod +x "$INSTALL_DIR/$BINARY_NAME"
 
 echo -e "${COLOR_GREEN}✓ Installed: $INSTALL_DIR/$BINARY_NAME${COLOR_RESET}"
@@ -104,7 +224,7 @@ else
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[3/4]${COLOR_RESET} Installing shell completions..."
+echo -e "${COLOR_BLUE}[4/4]${COLOR_RESET} Installing shell completions..."
 
 cat > /tmp/openpass-completion.bash << 'EOF'
 _openpass_completions()
@@ -114,7 +234,7 @@ _openpass_completions()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="init add list settings help"
+    commands="init add list settings version upgrade help"
     
     case "${prev}" in
         openpass|openpasswd|pw)
@@ -127,6 +247,10 @@ _openpass_completions()
             ;;
         settings)
             COMPREPLY=( $(compgen -W "set-passphrase remove-passphrase set-totp remove-totp show-totp-qr set-yubikey remove-yubikey help" -- ${cur}) )
+            return 0
+            ;;
+        version)
+            COMPREPLY=( $(compgen -W "--verbose --check" -- ${cur}) )
             return 0
             ;;
     esac
@@ -155,6 +279,8 @@ _openpass() {
         'add:Add a new password entry'
         'list:List and search passwords'
         'settings:Manage settings'
+        'version:Show version information'
+        'upgrade:Upgrade to latest version'
         'help:Show help message'
     )
 
@@ -180,12 +306,21 @@ _openpass() {
         'help:Show settings help'
     )
 
+    local -a version_flags
+    version_flags=(
+        '--verbose:Show detailed version information'
+        '--check:Check for updates'
+    )
+
     case $words[2] in
         add)
             _describe 'password types' add_types
             ;;
         settings)
             _describe 'settings commands' settings_commands
+            ;;
+        version)
+            _describe 'version options' version_flags
             ;;
         *)
             _describe 'commands' commands
@@ -208,10 +343,11 @@ else
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[4/4]${COLOR_RESET} Verifying installation..."
+echo -e "${COLOR_BLUE}Verifying installation...${COLOR_RESET}"
 if command -v openpasswd &> /dev/null; then
-    version=$(openpasswd help | grep -i openpasswd | head -1)
+    version=$(openpasswd version 2>/dev/null || echo "unknown")
     echo -e "${COLOR_GREEN}✓ OpenPasswd installed successfully!${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}  Version: ${version}${COLOR_RESET}"
     echo ""
 else
     echo -e "${COLOR_RED}✗ Installation verification failed${COLOR_RESET}"
@@ -229,6 +365,8 @@ echo -e "  ${COLOR_GREEN}openpasswd init${COLOR_RESET}              Initialize t
 echo -e "  ${COLOR_GREEN}openpasswd add${COLOR_RESET}               Add a new password"
 echo -e "  ${COLOR_GREEN}openpasswd list${COLOR_RESET}              List all passwords"
 echo -e "  ${COLOR_GREEN}openpasswd settings${COLOR_RESET}          Configure MFA/passphrase"
+echo -e "  ${COLOR_GREEN}openpasswd version --check${COLOR_RESET}   Check for updates"
+echo -e "  ${COLOR_GREEN}openpasswd upgrade${COLOR_RESET}           Upgrade to latest version"
 echo -e "  ${COLOR_GREEN}openpasswd help${COLOR_RESET}              Show all commands"
 echo ""
 echo -e "${COLOR_BLUE}Aliases:${COLOR_RESET}"
