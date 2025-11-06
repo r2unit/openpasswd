@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# OpenPasswd Installation Script
+# Install with: curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/main/install.sh | bash
+# Or clone and run: ./install.sh
 
 set -e
 
@@ -6,12 +10,25 @@ BINARY_NAME="openpasswd"
 INSTALL_DIR="/usr/local/bin"
 COMPLETION_DIR_BASH="/etc/bash_completion.d"
 COMPLETION_DIR_ZSH="/usr/local/share/zsh/site-functions"
+REPO_URL="https://github.com/r2unit/openpasswd"
+TEMP_DIR=""
 
 COLOR_GREEN='\033[0;32m'
 COLOR_BLUE='\033[0;34m'
 COLOR_YELLOW='\033[1;33m'
 COLOR_RED='\033[0;31m'
 COLOR_RESET='\033[0m'
+
+# Cleanup function
+cleanup() {
+    if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+        echo -e "${COLOR_BLUE}Cleaning up...${COLOR_RESET}"
+        rm -rf "$TEMP_DIR"
+    fi
+}
+
+# Set trap to cleanup on exit
+trap cleanup EXIT
 
 echo -e "${COLOR_BLUE}╔══════════════════════════════════════════════════════════════╗${COLOR_RESET}"
 echo -e "${COLOR_BLUE}║                                                              ║${COLOR_RESET}"
@@ -27,6 +44,26 @@ if [ "$EUID" -ne 0 ]; then
     echo ""
 fi
 
+# Check if we're in the repo directory or need to clone
+if [ -f "./cmd/openpasswd/main.go" ]; then
+    echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} Building from current directory..."
+    BUILD_DIR="."
+else
+    echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} Cloning repository from GitHub..."
+    
+    if ! command -v git &> /dev/null; then
+        echo -e "${COLOR_RED}✗ Error: Git is not installed${COLOR_RESET}"
+        echo -e "${COLOR_YELLOW}  Please install Git and try again${COLOR_RESET}"
+        exit 1
+    fi
+    
+    TEMP_DIR=$(mktemp -d)
+    echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} Cloning into $TEMP_DIR..."
+    git clone --depth 1 "$REPO_URL" "$TEMP_DIR" 2>&1 | grep -v "Cloning into" || true
+    BUILD_DIR="$TEMP_DIR"
+fi
+
+echo ""
 echo -e "${COLOR_BLUE}[1/4]${COLOR_RESET} Building OpenPasswd..."
 if ! command -v go &> /dev/null; then
     echo -e "${COLOR_RED}✗ Error: Go is not installed${COLOR_RESET}"
@@ -34,6 +71,7 @@ if ! command -v go &> /dev/null; then
     exit 1
 fi
 
+cd "$BUILD_DIR"
 go build -o "$BINARY_NAME" ./cmd/openpasswd
 if [ $? -eq 0 ]; then
     echo -e "${COLOR_GREEN}✓ Build successful${COLOR_RESET}"
@@ -76,7 +114,7 @@ _openpass_completions()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="init add list settings auth import help"
+    commands="init add list settings help"
     
     case "${prev}" in
         openpass|openpasswd|pw)
@@ -89,14 +127,6 @@ _openpass_completions()
             ;;
         settings)
             COMPREPLY=( $(compgen -W "set-passphrase remove-passphrase set-totp remove-totp show-totp-qr set-yubikey remove-yubikey help" -- ${cur}) )
-            return 0
-            ;;
-        auth)
-            COMPREPLY=( $(compgen -W "login logout status help" -- ${cur}) )
-            return 0
-            ;;
-        import)
-            COMPREPLY=( $(compgen -f -- ${cur}) )
             return 0
             ;;
     esac
@@ -125,8 +155,6 @@ _openpass() {
         'add:Add a new password entry'
         'list:List and search passwords'
         'settings:Manage settings'
-        'auth:Connect to password providers'
-        'import:Import passwords from files'
         'help:Show help message'
     )
 
@@ -152,23 +180,12 @@ _openpass() {
         'help:Show settings help'
     )
 
-    local -a auth_commands
-    auth_commands=(
-        'login:Connect to password provider and sync'
-        'logout:Disconnect from provider'
-        'status:Show connection status'
-        'help:Show auth help'
-    )
-
     case $words[2] in
         add)
             _describe 'password types' add_types
             ;;
         settings)
             _describe 'settings commands' settings_commands
-            ;;
-        auth)
-            _describe 'auth commands' auth_commands
             ;;
         *)
             _describe 'commands' commands
@@ -211,7 +228,6 @@ echo -e "${COLOR_BLUE}Quick Start:${COLOR_RESET}"
 echo -e "  ${COLOR_GREEN}openpasswd init${COLOR_RESET}              Initialize the password manager"
 echo -e "  ${COLOR_GREEN}openpasswd add${COLOR_RESET}               Add a new password"
 echo -e "  ${COLOR_GREEN}openpasswd list${COLOR_RESET}              List all passwords"
-echo -e "  ${COLOR_GREEN}openpasswd auth login${COLOR_RESET}        Connect to Proton Pass"
 echo -e "  ${COLOR_GREEN}openpasswd settings${COLOR_RESET}          Configure MFA/passphrase"
 echo -e "  ${COLOR_GREEN}openpasswd help${COLOR_RESET}              Show all commands"
 echo ""
@@ -220,4 +236,6 @@ echo -e "  ${COLOR_GREEN}openpass${COLOR_RESET} = ${COLOR_GREEN}openpasswd${COLO
 echo -e "  ${COLOR_GREEN}pw${COLOR_RESET} = ${COLOR_GREEN}openpasswd${COLOR_RESET}           Ultra-short alias"
 echo ""
 echo -e "${COLOR_YELLOW}Note:${COLOR_RESET} Restart your shell or run ${COLOR_GREEN}source ~/.bashrc${COLOR_RESET} to enable completions"
+echo ""
+echo -e "${COLOR_BLUE}Documentation:${COLOR_RESET} ${REPO_URL}"
 echo ""

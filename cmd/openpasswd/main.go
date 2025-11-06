@@ -23,19 +23,31 @@ func main() {
 	switch cmd {
 	case "init":
 		initializeConfig()
+
+	// TODO: Server mode - Remote sync functionality (future feature)
+	// Will allow syncing passwords across devices via a self-hosted server
 	case "server":
 		fmt.Fprintf(os.Stderr, tui.ColorWarning("Server mode is currently disabled\n"))
 		os.Exit(1)
+
+	// TODO: Auth - Provider authentication (future feature)
+	// Will support connecting to external password providers (Proton Pass, Bitwarden, etc.)
 	case "auth":
-		handleAuth()
+		fmt.Fprintf(os.Stderr, tui.ColorWarning("Auth functionality is currently disabled\n"))
+		os.Exit(1)
+
+	// TODO: Import - Password import from other managers (future feature)
+	// Will support importing from various password manager export formats
+	case "import":
+		fmt.Fprintf(os.Stderr, tui.ColorWarning("Import functionality is currently disabled\n"))
+		os.Exit(1)
+
 	case "add":
 		handleAdd()
 	case "list":
 		handleList()
 	case "settings":
 		handleSettings()
-	case "import":
-		handleImport()
 	case "help", "--help", "-h":
 		showHelp()
 	default:
@@ -45,6 +57,30 @@ func main() {
 
 func initializeConfig() {
 	fmt.Println(tui.ColorInfo("Initializing OpenPasswd..."))
+
+	// Check if configuration already exists
+	if _, err := config.LoadConfig(); err == nil {
+		// Configuration exists, prompt user with TUI (fallback to simple prompts if TTY not available)
+		choice, err := tui.RunInitTUI()
+
+		// If TUI fails (no TTY), use simple text prompts as fallback
+		if err != nil {
+			choice = initPromptFallback()
+		}
+
+		switch choice {
+		case tui.ChoiceIgnore:
+			fmt.Println(tui.ColorInfo("\n✓ Keeping existing configuration."))
+			configDir, _ := config.GetConfigDir()
+			fmt.Printf("  Config directory: %s\n", configDir)
+			return
+		case tui.ChoiceOverride:
+			fmt.Println(tui.ColorInfo("\n⚠ Overriding existing configuration..."))
+		case tui.ChoiceCancel:
+			fmt.Println(tui.ColorInfo("\nOperation cancelled."))
+			os.Exit(0)
+		}
+	}
 
 	salt, err := crypto.GenerateSalt()
 	if err != nil {
@@ -62,11 +98,42 @@ func initializeConfig() {
 	}
 
 	configDir, _ := config.GetConfigDir()
-	fmt.Println(tui.ColorSuccess("Configuration initialized successfully!"))
-	fmt.Printf("Config directory: %s\n", configDir)
-	fmt.Printf("Config file: %s/config.toml\n", configDir)
-	fmt.Printf("\n%s\n", tui.ColorInfo("Run 'openpass' to start the password manager"))
+	fmt.Println(tui.ColorSuccess("\n✓ Configuration initialized successfully!"))
+	fmt.Printf("  Config directory: %s\n", configDir)
+	fmt.Printf("  Config file: %s/config.toml\n", configDir)
+	fmt.Printf("\n%s\n", tui.ColorInfo("Run 'openpasswd' to start the password manager"))
 	fmt.Printf("%s\n", tui.ColorInfo("Edit config.toml to customize colors"))
+}
+
+func initPromptFallback() tui.InitChoice {
+	fmt.Println(tui.ColorWarning("\n⚠ Configuration already exists!"))
+	fmt.Println("\nWhat would you like to do?")
+	fmt.Println("  1) Ignore (keep existing configuration)")
+	fmt.Println("  2) Override (replace with new configuration)")
+	fmt.Print("\nEnter choice (1 or 2): ")
+
+	var choice string
+	fmt.Scanln(&choice)
+
+	if choice == "1" {
+		return tui.ChoiceIgnore
+	} else if choice == "2" {
+		// Extra confirmation for override
+		fmt.Println(tui.ColorWarning("\n⚠ WARNING: This will delete your existing configuration and database!"))
+		fmt.Println(tui.ColorWarning("All stored passwords will be lost."))
+		fmt.Print("\nType 'yes' to confirm override: ")
+
+		var confirm string
+		fmt.Scanln(&confirm)
+
+		if confirm != "yes" {
+			return tui.ChoiceCancel
+		}
+
+		return tui.ChoiceOverride
+	}
+
+	return tui.ChoiceCancel
 }
 
 func showHelp() {
@@ -76,8 +143,6 @@ COMMANDS:
     openpasswd init              Initialize configuration and database
     openpasswd add               Add a new password entry
     openpasswd list              List and search passwords
-    openpasswd auth              Connect to password providers (Proton Pass, etc.)
-    openpasswd import            Import passwords from other password managers
     openpasswd settings          Manage settings (passphrase, MFA, etc.)
     openpasswd help              Show this help message
 
@@ -89,8 +154,6 @@ EXAMPLES:
     openpasswd add                              # Add password interactively
     openpasswd add login                        # Add login password
     openpasswd list                             # List all passwords
-    openpasswd auth login                       # Connect to Proton Pass and sync passwords
-    openpasswd import                           # Import from export files
     openpasswd settings set-passphrase          # Set master passphrase
     openpasswd settings set-totp                # Enable TOTP authentication
     openpasswd settings set-yubikey             # Enable YubiKey authentication
@@ -107,7 +170,15 @@ For more information, visit: https://github.com/r2unit/openpasswd
 	fmt.Println(help)
 }
 
+// TODO: handleImport - Import passwords from other password managers
+// This function will allow importing passwords from export files of various password managers
+// Planned support: Bitwarden, 1Password, LastPass, KeePass, etc.
+// Currently disabled - implementation pending
 func handleImport() {
+	// DISABLED: Import functionality is not yet implemented
+	// Will support reading various export formats (CSV, JSON, XML)
+	// and converting them to the OpenPasswd encrypted format
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -145,7 +216,17 @@ func handleImport() {
 	}
 }
 
+// TODO: handleAuth - Authentication with external password providers
+// This function will handle OAuth/API authentication with providers like:
+// - Proton Pass (via API)
+// - Bitwarden (self-hosted or cloud)
+// - 1Password (via CLI integration)
+// Currently disabled - implementation pending
 func handleAuth() {
+	// DISABLED: Auth functionality is not yet implemented
+	// Will require OAuth2 flows and secure token storage
+	// Consider using system keychain for storing provider tokens
+
 	if len(os.Args) < 3 {
 		showAuthHelp()
 		return
@@ -169,7 +250,12 @@ func handleAuth() {
 	}
 }
 
+// TODO: handleAuthLogin - Login to external password provider
+// Will implement OAuth2 flow or API key authentication
+// Should securely store access tokens using system keychain
 func handleAuthLogin() {
+	// DISABLED: Not yet implemented
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -207,12 +293,18 @@ func handleAuthLogin() {
 	}
 }
 
+// TODO: handleAuthLogout - Logout from external password provider
+// Will revoke access tokens and clear stored credentials
 func handleAuthLogout() {
+	// DISABLED: Not yet implemented
 	fmt.Println(tui.ColorInfo("Auth logout functionality coming soon"))
 	fmt.Println(tui.ColorInfo("For now, passwords are synced locally only"))
 }
 
+// TODO: handleAuthStatus - Check authentication status with providers
+// Will display connected providers and sync status
 func handleAuthStatus() {
+	// DISABLED: Not yet implemented
 	fmt.Println(tui.ColorInfo("Auth status functionality coming soon"))
 	fmt.Println(tui.ColorInfo("For now, use 'openpasswd list' to see your synced passwords"))
 }

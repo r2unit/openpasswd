@@ -1,20 +1,29 @@
 # OpenPasswd
 
-A secure, terminal-based password manager built with Go. Store and manage your passwords locally with end-to-end encryption and sync from external password managers.
+A secure, terminal-based password manager built with Go. Store and manage your passwords locally with end-to-end encryption.
 
-## Features
-
-- **Terminal UI**: Beautiful interactive terminal interface powered by Bubble Tea
-- **End-to-End Encryption**: AES-256-GCM encryption with PBKDF2 key derivation
-- **Local Storage**: SQLite database with encrypted passwords
-- **Provider Integration**: Connect to Proton Pass and other password managers
-- **Import/Export**: Support for multiple password manager formats
-- **MFA Support**: TOTP and YubiKey authentication
-- **Cross-Platform**: Works on Linux, macOS, and Windows
+> [!WARNING]
+> Openpasswd is still under development and currently in a pre‑alpha phase. Do not use it in production.
 
 ## Installation
 
-### Using Install Script (Recommended)
+### Quick Install (One-Liner)
+
+Install directly from GitHub using curl:
+
+```bash
+YOLO 
+curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/main/install.sh | bash
+```
+
+This will:
+- Clone the repository automatically
+- Build the binary
+- Install to `/usr/local/bin`
+- Create convenient aliases (`openpass` and `pw`)
+- Set up shell completions for bash and zsh
+
+### Using Install Script (Alternative)
 
 ```bash
 # Clone the repository
@@ -25,12 +34,12 @@ cd openpasswd
 ./install.sh
 ```
 
-This will install `openpasswd` to `/usr/local/bin` and create convenient aliases (`openpass` and `pw`).
-
 ### Manual Installation
 
 ```bash
-# Build the binary
+# Clone and build
+git clone https://github.com/r2unit/openpasswd.git
+cd openpasswd
 go build -o openpasswd ./cmd/openpasswd
 
 # Move to your PATH (optional)
@@ -49,11 +58,9 @@ openpasswd add
 # List passwords
 openpasswd list
 
-# Connect to Proton Pass
-openpasswd auth login
-
-# Configure MFA
+# Configure settings (MFA, passphrase, etc.)
 openpasswd settings set-totp
+openpasswd settings set-passphrase
 ```
 
 ## Usage
@@ -63,8 +70,6 @@ openpasswd settings set-totp
 - `openpasswd init` - Initialize configuration and database
 - `openpasswd add` - Add a new password entry
 - `openpasswd list` - List and search passwords
-- `openpasswd auth login` - Connect to password providers (Proton Pass, etc.)
-- `openpasswd import` - Import passwords from files
 - `openpasswd settings` - Manage settings (passphrase, MFA, etc.)
 - `openpasswd help` - Show help message
 

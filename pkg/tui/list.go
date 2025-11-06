@@ -54,6 +54,25 @@ var (
 
 	listValueStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFFFF"))
+
+	listMetaStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#666666")).
+			Italic(true)
+
+	listMetaDotStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#666666")).
+				Bold(true)
+
+	listHighlightStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFF00")).
+				Background(lipgloss.Color("#5F5F00")).
+				Bold(true)
+
+	listMetaHighlightStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFF00")).
+				Background(lipgloss.Color("#3A3A00")).
+				Bold(true).
+				Italic(true)
 )
 
 func NewListTUI(db *database.DB, salt []byte, passphrase string) *listModel {
@@ -187,20 +206,38 @@ func (m *listModel) filterPasswords() {
 	filtered := []*models.Password{}
 
 	for _, p := range m.passwords {
+		// Decrypt all searchable fields
 		decryptedName := p.Name
 		if name, err := m.encryptor.Decrypt(p.Name); err == nil {
 			decryptedName = name
 		}
 
-		decryptedUsername := p.Username
+		decryptedUsername := ""
 		if p.Username != "" {
 			if username, err := m.encryptor.Decrypt(p.Username); err == nil {
 				decryptedUsername = username
 			}
 		}
 
+		decryptedURL := ""
+		if p.URL != "" {
+			if url, err := m.encryptor.Decrypt(p.URL); err == nil {
+				decryptedURL = url
+			}
+		}
+
+		decryptedNotes := ""
+		if p.Notes != "" {
+			if notes, err := m.encryptor.Decrypt(p.Notes); err == nil {
+				decryptedNotes = notes
+			}
+		}
+
+		// Search in all fields
 		if strings.Contains(strings.ToLower(decryptedName), query) ||
-			strings.Contains(strings.ToLower(decryptedUsername), query) {
+			strings.Contains(strings.ToLower(decryptedUsername), query) ||
+			strings.Contains(strings.ToLower(decryptedURL), query) ||
+			strings.Contains(strings.ToLower(decryptedNotes), query) {
 			filtered = append(filtered, p)
 		}
 	}
@@ -231,26 +268,106 @@ func (m listModel) View() string {
 		s.WriteString("\n\n")
 
 		for i, p := range m.filteredPasswords {
+			// Decrypt name
 			decryptedName := p.Name
 			if name, err := m.encryptor.Decrypt(p.Name); err == nil {
 				decryptedName = name
 			}
 
-			decryptedUsername := p.Username
+			// Decrypt username
+			decryptedUsername := ""
 			if p.Username != "" {
 				if username, err := m.encryptor.Decrypt(p.Username); err == nil {
 					decryptedUsername = username
 				}
 			}
 
-			line := fmt.Sprintf("%-30s  %-25s", truncateString(decryptedName, 30), truncateString(decryptedUsername, 25))
+			// Decrypt URL
+			decryptedURL := ""
+			if p.URL != "" {
+				if url, err := m.encryptor.Decrypt(p.URL); err == nil {
+					decryptedURL = url
+				}
+			}
 
+			// Decrypt notes (get first line only)
+			decryptedNotes := ""
+			if p.Notes != "" {
+				if notes, err := m.encryptor.Decrypt(p.Notes); err == nil {
+					// Take first line or first 30 chars
+					lines := strings.Split(notes, "\n")
+					if len(lines) > 0 {
+						decryptedNotes = lines[0]
+					}
+				}
+			}
+
+			// Render the password entry
+			cursor := "  "
 			if i == m.cursor {
-				s.WriteString(listSelectedStyle.Render("→ " + line))
+				cursor = listSelectedStyle.Render("→ ")
+			}
+
+			// First line: Name (with highlighting if searching)
+			nameStyle := listNormalStyle
+			nameHighlightStyle := listHighlightStyle
+			if i == m.cursor {
+				nameStyle = listSelectedStyle
+			}
+			s.WriteString(cursor)
+			if m.searchInput != "" {
+				s.WriteString(highlightText(decryptedName, m.searchInput, nameStyle, nameHighlightStyle))
 			} else {
-				s.WriteString(listNormalStyle.Render("  " + line))
+				s.WriteString(nameStyle.Render(decryptedName))
 			}
 			s.WriteString("\n")
+
+			// Second line: metadata (username • website • notes)
+			var metaParts []struct {
+				text      string
+				truncated string
+			}
+			if decryptedUsername != "" {
+				metaParts = append(metaParts, struct {
+					text      string
+					truncated string
+				}{decryptedUsername, truncateString(decryptedUsername, 25)})
+			}
+			if decryptedURL != "" {
+				metaParts = append(metaParts, struct {
+					text      string
+					truncated string
+				}{decryptedURL, truncateString(decryptedURL, 30)})
+			}
+			if decryptedNotes != "" {
+				metaParts = append(metaParts, struct {
+					text      string
+					truncated string
+				}{decryptedNotes, truncateString(decryptedNotes, 30)})
+			}
+
+			if len(metaParts) > 0 {
+				s.WriteString("  ") // Indent
+				for idx, part := range metaParts {
+					// Apply highlighting to metadata if searching
+					if m.searchInput != "" {
+						s.WriteString(highlightText(part.truncated, m.searchInput, listMetaStyle, listMetaHighlightStyle))
+					} else {
+						s.WriteString(listMetaStyle.Render(part.truncated))
+					}
+					if idx < len(metaParts)-1 {
+						s.WriteString(" ")
+						s.WriteString(listMetaDotStyle.Render("•"))
+						s.WriteString(" ")
+					}
+				}
+				s.WriteString("\n")
+			}
+
+			// Add spacing between entries
+			if i < len(m.filteredPasswords)-1 {
+				s.WriteString("\n")
+			}
 		}
 	}
 
@@ -268,10 +385,6 @@ func (m listModel) renderDetails() string {
 	var s strings.Builder
 
 	s.WriteString(listTitleStyle.Render("Password Details"))
-	s.WriteString("\n\n")
-
-	s.WriteString(listLabelStyle.Render("Type: "))
-	s.WriteString(listValueStyle.Render(string(m.selectedPass.Type)))
 	s.WriteString("\n\n")
 
 	for i, field := range m.detailFields {
@@ -310,18 +423,21 @@ func (m listModel) renderDetails() string {
 
 	s.WriteString(listLabelStyle.Render("Updated: "))
 	s.WriteString(listNormalStyle.Render(m.selectedPass.UpdatedAt.Format("2006-01-02 15:04:05")))
-	s.WriteString("\n")
+	s.WriteString("\n\n")
 
 	if m.copiedMessage != "" {
-		s.WriteString("\n")
 		if strings.HasPrefix(m.copiedMessage, "✓") {
 			s.WriteString(addSuccessStyle.Render(m.copiedMessage))
 		} else {
 			s.WriteString(addErrorStyle.Render(m.copiedMessage))
 		}
+		s.WriteString("\n\n")
 	}
 
-	s.WriteString("\n\n")
+	s.WriteString(listLabelStyle.Render("Type: "))
+	s.WriteString(listValueStyle.Render(string(m.selectedPass.Type)))
+	s.WriteString("\n")
+
 	s.WriteString(listNormalStyle.Render("↑/↓: select field • enter: copy • c: copy all • tab: toggle password • q/esc: go back"))
 
 	return s.String()
@@ -444,6 +560,49 @@ func truncateString(s string, max int) string {
 		return s[:max-3] + "..."
 	}
 	return s
+}
+
+// highlightText highlights matching query in text with the given style
+func highlightText(text, query string, normalStyle, highlightStyle lipgloss.Style) string {
+	if query == "" {
+		return normalStyle.Render(text)
+	}
+
+	lowerText := strings.ToLower(text)
+	lowerQuery := strings.ToLower(query)
+
+	if !strings.Contains(lowerText, lowerQuery) {
+		return normalStyle.Render(text)
+	}
+
+	var result strings.Builder
+	remaining := text
+	lowerRemaining := lowerText
+
+	for {
+		index := strings.Index(lowerRemaining, lowerQuery)
+		if index == -1 {
+			// No more matches, add remaining text
+			if len(remaining) > 0 {
+				result.WriteString(normalStyle.Render(remaining))
+			}
+			break
+		}
+
+		// Add text before match
+		if index > 0 {
+			result.WriteString(normalStyle.Render(remaining[:index]))
+		}
+
+		// Add highlighted match
+		result.WriteString(highlightStyle.Render(remaining[index : index+len(query)]))
+
+		// Move to text after match
+		remaining = remaining[index+len(query):]
+		lowerRemaining = lowerRemaining[index+len(query):]
+	}
+
+	return result.String()
 }
 
 func RunListTUI(db *database.DB, salt []byte, passphrase string) error {
