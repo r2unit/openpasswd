@@ -1,0 +1,11 @@
+*.exe
+pman
+pman-*
+.git
+.gitignore
+README.md
+.vscode
+.idea
+*.swp
+.DS_Store
+.config

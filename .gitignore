@@ -2,6 +2,10 @@
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
 # Binaries for programs and plugins
+openpass
+pw
+openpass-*
+pw-*
 *.exe
 *.exe~
 *.dll
@@ -28,5 +32,18 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Config
+.config/
+*.db
+salt
+token.json
+
+# OS
+.DS_Store
+Thumbs.db
