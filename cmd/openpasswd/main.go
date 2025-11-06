@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/r2unit/openpasswd/pkg/auth"
-	"github.com/r2unit/openpasswd/pkg/client"
 	"github.com/r2unit/openpasswd/pkg/config"
 	"github.com/r2unit/openpasswd/pkg/crypto"
 	"github.com/r2unit/openpasswd/pkg/database"
 	"github.com/r2unit/openpasswd/pkg/mfa"
-	"github.com/r2unit/openpasswd/pkg/server"
+	_ "github.com/r2unit/openpasswd/pkg/proton/pass" // Register Proton Pass provider
 	"github.com/r2unit/openpasswd/pkg/tui"
 )
 
@@ -36,6 +34,8 @@ func main() {
 		handleList()
 	case "settings":
 		handleSettings()
+	case "import":
+		handleImport()
 	case "help", "--help", "-h":
 		showHelp()
 	default:
@@ -73,23 +73,27 @@ func showHelp() {
 	help := `OpenPasswd - A secure, terminal-based password manager
 
 COMMANDS:
-    openpass init              Initialize configuration and database
-    openpass add               Add a new password entry
-    openpass list              List and search passwords
-    openpass settings          Manage settings (passphrase, MFA, etc.)
-    openpass help              Show this help message
+    openpasswd init              Initialize configuration and database
+    openpasswd add               Add a new password entry
+    openpasswd list              List and search passwords
+    openpasswd auth              Connect to password providers (Proton Pass, etc.)
+    openpasswd import            Import passwords from other password managers
+    openpasswd settings          Manage settings (passphrase, MFA, etc.)
+    openpasswd help              Show this help message
 
 OPTIONS:
-    --help, -h                Show this help message
+    --help, -h                   Show this help message
 
 EXAMPLES:
-    openpass init                             # First-time setup
-    openpass add                              # Add password interactively
-    openpass add login                        # Add login password
-    openpass list                             # List all passwords
-    openpass settings set-passphrase          # Set master passphrase
-    openpass settings set-totp                # Enable TOTP authentication
-    openpass settings set-yubikey             # Enable YubiKey authentication
+    openpasswd init                             # First-time setup
+    openpasswd add                              # Add password interactively
+    openpasswd add login                        # Add login password
+    openpasswd list                             # List all passwords
+    openpasswd auth login                       # Connect to Proton Pass and sync passwords
+    openpasswd import                           # Import from export files
+    openpasswd settings set-passphrase          # Set master passphrase
+    openpasswd settings set-totp                # Enable TOTP authentication
+    openpasswd settings set-yubikey             # Enable YubiKey authentication
 
 CONFIGURATION:
     ~/.config/openpasswd/passwords.db    Encrypted password database
@@ -103,23 +107,12 @@ For more information, visit: https://github.com/r2unit/openpasswd
 	fmt.Println(help)
 }
 
-func runServer() {
+func handleImport() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		fmt.Println("\nRun 'openpass init' to initialize the password manager")
 		os.Exit(1)
-	}
-
-	masterKey := os.Getenv("OPENPASS_MASTER_KEY")
-	if masterKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: OPENPASS_MASTER_KEY environment variable not set")
-		os.Exit(1)
-	}
-
-	port := os.Getenv("OPENPASS_PORT")
-	if port == "" {
-		port = "8080"
 	}
 
 	db, err := database.New(cfg.DatabasePath)
@@ -129,74 +122,134 @@ func runServer() {
 	}
 	defer db.Close()
 
-	srv := server.New(db, cfg.Salt, masterKey)
-	if err := srv.Start(port); err != nil {
-		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+	passphrase := ""
+	if config.HasPassphrase() {
+		fmt.Print("Enter master passphrase: ")
+		passphrase, err = readPassword()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+			os.Exit(1)
+		}
+		fmt.Println()
+
+		savedPass, err := config.LoadPassphrase()
+		if err != nil || savedPass != passphrase {
+			fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase\n"))
+			os.Exit(1)
+		}
+	}
+
+	if err := tui.RunImportTUI(db, cfg.Salt, passphrase); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
 		os.Exit(1)
 	}
 }
 
 func handleAuth() {
-	fmt.Fprintf(os.Stderr, tui.ColorWarning("Auth/Server mode is currently disabled\n"))
-	os.Exit(1)
+	if len(os.Args) < 3 {
+		showAuthHelp()
+		return
+	}
+
+	subcommand := os.Args[2]
+
+	switch subcommand {
+	case "login":
+		handleAuthLogin()
+	case "logout":
+		handleAuthLogout()
+	case "status":
+		handleAuthStatus()
+	case "help", "--help", "-h":
+		showAuthHelp()
+	default:
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Unknown auth command: %s\n", subcommand)))
+		showAuthHelp()
+		os.Exit(1)
+	}
 }
 
 func handleAuthLogin() {
-	if len(os.Args) < 4 {
-		fmt.Println("Usage: openpass auth login <server-url>")
-		fmt.Println("Example: openpass auth login http://localhost:8080")
-		os.Exit(1)
-	}
-
-	serverURL := os.Args[3]
-
-	fmt.Print("Enter passphrase: ")
-	password, err := readPassword()
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nError reading passphrase: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Println("\nRun 'openpasswd init' to initialize the password manager")
 		os.Exit(1)
 	}
-	fmt.Println()
 
-	fmt.Print("Enter master key: ")
-	masterKey, err := readPassword()
+	db, err := database.New(cfg.DatabasePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nError reading master key: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error opening database: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Println()
+	defer db.Close()
 
-	fmt.Println("Logging in...")
+	passphrase := ""
+	if config.HasPassphrase() {
+		fmt.Print("Enter master passphrase: ")
+		passphrase, err = readPassword()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+			os.Exit(1)
+		}
+		fmt.Println()
 
-	token, expiresAt, err := client.Login(serverURL, password, masterKey)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Login failed: %v\n", err)
-		os.Exit(1)
+		savedPass, err := config.LoadPassphrase()
+		if err != nil || savedPass != passphrase {
+			fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase\n"))
+			os.Exit(1)
+		}
 	}
 
-	if err := auth.SaveClientToken(serverURL, token, expiresAt); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to save token: %v\n", err)
+	if err := tui.RunAuthLoginTUI(db, cfg.Salt, passphrase); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
 		os.Exit(1)
 	}
-
-	fmt.Println("Login successful!")
-	fmt.Printf("Token expires: %s\n", expiresAt.Format("2006-01-02 15:04:05"))
 }
 
 func handleAuthLogout() {
-	token, err := auth.LoadClientToken()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("No active session: %v\n", err)))
-		os.Exit(1)
-	}
+	fmt.Println(tui.ColorInfo("Auth logout functionality coming soon"))
+	fmt.Println(tui.ColorInfo("For now, passwords are synced locally only"))
+}
 
-	c := client.New(token.ServerURL, token.Value)
-	if err := c.Logout(); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Logout failed: %v\n", err)))
-		os.Exit(1)
-	}
+func handleAuthStatus() {
+	fmt.Println(tui.ColorInfo("Auth status functionality coming soon"))
+	fmt.Println(tui.ColorInfo("For now, use 'openpasswd list' to see your synced passwords"))
+}
 
-	fmt.Println(tui.ColorSuccess("Logged out successfully"))
+func showAuthHelp() {
+	help := `OpenPasswd - Auth Command
+
+COMMANDS:
+    openpasswd auth login         Connect to a password provider and sync passwords
+    openpasswd auth logout        Disconnect from provider (coming soon)
+    openpasswd auth status        Show current auth status (coming soon)
+    openpasswd auth help          Show this help message
+
+DESCRIPTION:
+    The auth command allows you to connect to external password providers
+    and sync your passwords to openpasswd. Currently supported providers:
+    
+    - Proton Pass (via export file)
+    
+    More providers coming soon:
+    - Bitwarden
+    - 1Password
+    - LastPass
+
+EXAMPLES:
+    openpasswd auth login         # Show list of available providers
+    openpasswd auth status        # Check connection status
+    openpasswd auth logout        # Disconnect from provider
+
+WORKFLOW:
+    1. Export your passwords from your current password manager
+    2. Run 'openpasswd auth login'
+    3. Select your provider from the list
+    4. Enter required credentials (usually export file path)
+    5. Your passwords will be synced and encrypted locally
+`
+	fmt.Println(help)
 }
 
 func handleAdd() {

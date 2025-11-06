@@ -2,7 +2,7 @@
 
 set -e
 
-BINARY_NAME="openpass"
+BINARY_NAME="openpasswd"
 INSTALL_DIR="/usr/local/bin"
 COMPLETION_DIR_BASH="/etc/bash_completion.d"
 COMPLETION_DIR_ZSH="/usr/local/share/zsh/site-functions"
@@ -34,7 +34,7 @@ if ! command -v go &> /dev/null; then
     exit 1
 fi
 
-go build -o "$BINARY_NAME" cmd/openpass/main.go cmd/openpass/terminal.go
+go build -o "$BINARY_NAME" ./cmd/openpasswd
 if [ $? -eq 0 ]; then
     echo -e "${COLOR_GREEN}✓ Build successful${COLOR_RESET}"
 else
@@ -51,11 +51,11 @@ echo -e "${COLOR_GREEN}✓ Installed: $INSTALL_DIR/$BINARY_NAME${COLOR_RESET}"
 
 # Create aliases
 alias_created=0
-if sudo ln -sf "$INSTALL_DIR/$BINARY_NAME" "$INSTALL_DIR/openpasswd" 2>/dev/null; then
-    echo -e "${COLOR_GREEN}✓ Created alias: $INSTALL_DIR/openpasswd${COLOR_RESET}"
+if sudo ln -sf "$INSTALL_DIR/$BINARY_NAME" "$INSTALL_DIR/openpass" 2>/dev/null; then
+    echo -e "${COLOR_GREEN}✓ Created alias: $INSTALL_DIR/openpass${COLOR_RESET}"
     alias_created=1
 else
-    echo -e "${COLOR_YELLOW}⚠  Could not create 'openpasswd' alias${COLOR_RESET}"
+    echo -e "${COLOR_YELLOW}⚠  Could not create 'openpass' alias${COLOR_RESET}"
 fi
 
 if sudo ln -sf "$INSTALL_DIR/$BINARY_NAME" "$INSTALL_DIR/pw" 2>/dev/null; then
@@ -76,7 +76,7 @@ _openpass_completions()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="init add list settings server auth help"
+    commands="init add list settings auth import help"
     
     case "${prev}" in
         openpass|openpasswd|pw)
@@ -92,7 +92,11 @@ _openpass_completions()
             return 0
             ;;
         auth)
-            COMPREPLY=( $(compgen -W "login logout" -- ${cur}) )
+            COMPREPLY=( $(compgen -W "login logout status help" -- ${cur}) )
+            return 0
+            ;;
+        import)
+            COMPREPLY=( $(compgen -f -- ${cur}) )
             return 0
             ;;
     esac
@@ -121,8 +125,8 @@ _openpass() {
         'add:Add a new password entry'
         'list:List and search passwords'
         'settings:Manage settings'
-        'server:Start headless server mode'
-        'auth:Authentication commands'
+        'auth:Connect to password providers'
+        'import:Import passwords from files'
         'help:Show help message'
     )
 
@@ -150,8 +154,10 @@ _openpass() {
 
     local -a auth_commands
     auth_commands=(
-        'login:Login to remote server'
-        'logout:Logout from remote server'
+        'login:Connect to password provider and sync'
+        'logout:Disconnect from provider'
+        'status:Show connection status'
+        'help:Show auth help'
     )
 
     case $words[2] in
@@ -186,8 +192,8 @@ fi
 
 echo ""
 echo -e "${COLOR_BLUE}[4/4]${COLOR_RESET} Verifying installation..."
-if command -v openpass &> /dev/null; then
-    version=$(openpass help | grep -i openpasswd | head -1)
+if command -v openpasswd &> /dev/null; then
+    version=$(openpasswd help | grep -i openpasswd | head -1)
     echo -e "${COLOR_GREEN}✓ OpenPasswd installed successfully!${COLOR_RESET}"
     echo ""
 else
@@ -202,15 +208,16 @@ echo -e "${COLOR_GREEN}║                                                      
 echo -e "${COLOR_GREEN}╚══════════════════════════════════════════════════════════════╝${COLOR_RESET}"
 echo ""
 echo -e "${COLOR_BLUE}Quick Start:${COLOR_RESET}"
-echo -e "  ${COLOR_GREEN}openpass init${COLOR_RESET}              Initialize the password manager"
-echo -e "  ${COLOR_GREEN}openpass add${COLOR_RESET}               Add a new password"
-echo -e "  ${COLOR_GREEN}openpass list${COLOR_RESET}              List all passwords"
-echo -e "  ${COLOR_GREEN}openpass settings${COLOR_RESET}          Configure MFA/passphrase"
-echo -e "  ${COLOR_GREEN}openpass help${COLOR_RESET}              Show all commands"
+echo -e "  ${COLOR_GREEN}openpasswd init${COLOR_RESET}              Initialize the password manager"
+echo -e "  ${COLOR_GREEN}openpasswd add${COLOR_RESET}               Add a new password"
+echo -e "  ${COLOR_GREEN}openpasswd list${COLOR_RESET}              List all passwords"
+echo -e "  ${COLOR_GREEN}openpasswd auth login${COLOR_RESET}        Connect to Proton Pass"
+echo -e "  ${COLOR_GREEN}openpasswd settings${COLOR_RESET}          Configure MFA/passphrase"
+echo -e "  ${COLOR_GREEN}openpasswd help${COLOR_RESET}              Show all commands"
 echo ""
 echo -e "${COLOR_BLUE}Aliases:${COLOR_RESET}"
-echo -e "  ${COLOR_GREEN}openpasswd${COLOR_RESET} = ${COLOR_GREEN}openpass${COLOR_RESET}    Full name alias"
-echo -e "  ${COLOR_GREEN}pw${COLOR_RESET} = ${COLOR_GREEN}openpass${COLOR_RESET}           Short alias"
+echo -e "  ${COLOR_GREEN}openpass${COLOR_RESET} = ${COLOR_GREEN}openpasswd${COLOR_RESET}    Short alias"
+echo -e "  ${COLOR_GREEN}pw${COLOR_RESET} = ${COLOR_GREEN}openpasswd${COLOR_RESET}           Ultra-short alias"
 echo ""
 echo -e "${COLOR_YELLOW}Note:${COLOR_RESET} Restart your shell or run ${COLOR_GREEN}source ~/.bashrc${COLOR_RESET} to enable completions"
 echo ""

@@ -1,123 +1,130 @@
 # OpenPasswd
 
-A secure, terminal-based password manager built with Go. Store and manage your passwords locally or remotely with end-to-end encryption.
+A secure, terminal-based password manager built with Go. Store and manage your passwords locally with end-to-end encryption and sync from external password managers.
 
 ## Features
 
-- **Terminal UI**: Beautiful interactive terminal interface
+- **Terminal UI**: Beautiful interactive terminal interface powered by Bubble Tea
 - **End-to-End Encryption**: AES-256-GCM encryption with PBKDF2 key derivation
-- **Local Storage**: JSON-based database with encrypted passwords
-- **Headless Server Mode**: Run as HTTP API server for remote access
-- **Remote Client**: Connect to remote server instances
-- **Zero Third-Party Dependencies**: Built with Go standard library only
+- **Local Storage**: SQLite database with encrypted passwords
+- **Provider Integration**: Connect to Proton Pass and other password managers
+- **Import/Export**: Support for multiple password manager formats
+- **MFA Support**: TOTP and YubiKey authentication
 - **Cross-Platform**: Works on Linux, macOS, and Windows
 
 ## Installation
+
+### Using Install Script (Recommended)
 
 ```bash
 # Clone the repository
 git clone https://github.com/r2unit/openpasswd.git
 cd openpasswd
 
+# Run install script
+./install.sh
+```
+
+This will install `openpasswd` to `/usr/local/bin` and create convenient aliases (`openpass` and `pw`).
+
+### Manual Installation
+
+```bash
 # Build the binary
-go build -o openpass ./cmd/openpass
+go build -o openpasswd ./cmd/openpasswd
 
 # Move to your PATH (optional)
-sudo mv openpass /usr/local/bin/
+sudo mv openpasswd /usr/local/bin/
 ```
 
 ## Quick Start
 
-### Local Usage
-
 ```bash
 # Initialize configuration
-openpass init
+openpasswd init
 
-# Launch the TUI
-openpass
-```
+# Add a password
+openpasswd add
 
-### Server Mode (Headless)
+# List passwords
+openpasswd list
 
-```bash
-# Set environment variables
-export OPENPASS_MASTER_KEY="your-secure-master-key"
-export OPENPASS_PORT="8080"
+# Connect to Proton Pass
+openpasswd auth login
 
-# Start the server
-openpass server
-```
-
-### Remote Client
-
-```bash
-# Login to remote server
-openpass auth login http://localhost:8080
-
-# Use TUI with remote server
-openpass
+# Configure MFA
+openpasswd settings set-totp
 ```
 
 ## Usage
 
 ### Commands
 
-- `openpass` - Launch interactive TUI
-- `openpass init` - Initialize configuration
-- `openpass server` - Start headless server
-- `openpass auth login <url>` - Login to remote server
-- `openpass auth logout` - Logout from remote server
-- `openpass help` - Show help message
+- `openpasswd init` - Initialize configuration and database
+- `openpasswd add` - Add a new password entry
+- `openpasswd list` - List and search passwords
+- `openpasswd auth login` - Connect to password providers (Proton Pass, etc.)
+- `openpasswd import` - Import passwords from files
+- `openpasswd settings` - Manage settings (passphrase, MFA, etc.)
+- `openpasswd help` - Show help message
 
-### TUI Operations
+### Aliases
 
-1. **List Passwords** - View all stored passwords
-2. **Add Password** - Add a new password entry
-3. **View Password** - View password details (decrypted)
-4. **Search Passwords** - Search by name, username, or URL
-5. **Update Password** - Modify existing password
-6. **Delete Password** - Remove password entry
-7. **Exit** - Quit the application
+You can use these shorter commands:
+- `openpass` = `openpasswd` (short alias)
+- `pw` = `openpasswd` (ultra-short alias)
 
-## Docker
+## Proton Pass Integration
 
-### Build Image
+### Important: No Public API Available
 
-```bash
-docker build -t openpasswd .
-```
+Proton Pass **does not provide a public API** for third-party integrations. The only supported method for integration is via export files.
 
-### Run Server in Container
+### How to Sync from Proton Pass
 
-```bash
-docker run -d \
-  -p 8080:8080 \
-  -e OPENPASS_MASTER_KEY="your-secure-master-key" \
-  -v /path/to/data:/root/.config/passwd \
-  openpasswd
-```
+1. **Export from Proton Pass**:
+   - Open Proton Pass (browser extension or web app)
+   - Go to Settings → Export
+   - Choose your export format:
+     - **PGP-encrypted ZIP** (recommended, most secure)
+     - **Unencrypted ZIP**
+     - **CSV**
 
-### Connect from Local Client
+2. **Import to OpenPasswd**:
+   ```bash
+   openpasswd auth login
+   # Select "Proton Pass" from the provider list
+   # Enter the path to your export file
+   # Enter passphrase (if encrypted)
+   ```
 
-```bash
-openpass auth login http://localhost:8080
-```
+### Supported Export Formats
+
+- **JSON** - Proton Pass JSON export (unencrypted)
+- **CSV** - Simple CSV export
+- **ZIP** - ZIP archive containing JSON or encrypted data
+- **PGP** - PGP-encrypted export (requires `gpg` installed)
+
+### Why No Live API Sync?
+
+Proton Pass uses end-to-end encryption where all encryption happens client-side. They deliberately do not expose a public API to maintain security and privacy. The export feature is the official and recommended way to migrate or backup your passwords.
+
+### Research References
+
+- [proton-pass-common repository](https://github.com/protonpass/proton-pass-common) - Internal library, not a public API
+- [Proton WebClients repository](https://github.com/ProtonMail/WebClients) - Official clients source code
+- All Proton Pass clients use private, undocumented APIs for internal use only
 
 ## Configuration
 
-### Local Configuration
-
-Configuration is stored in `~/.config/passwd/`:
+Configuration is stored in `~/.config/openpasswd/`:
 
 - `salt` - Encryption salt (base64 encoded)
-- `passwords.db` - Encrypted password database (JSON)
-- `token.json` - Authentication token for remote access
-
-### Environment Variables
-
-- `OPENPASS_MASTER_KEY` - Master key for server authentication
-- `OPENPASS_PORT` - Server port (default: 8080)
+- `passwords.db` - Encrypted password database (SQLite)
+- `passphrase` - Master passphrase (optional, encrypted)
+- `totp_secret` - TOTP secret for 2FA (optional)
+- `yubikey_challenge` - YubiKey challenge (optional)
+- `config.toml` - Color configuration
 
 ## Security
 
@@ -127,19 +134,50 @@ Configuration is stored in `~/.config/passwd/`:
 - **Token-Based Auth**: JWT-like tokens with 24-hour expiration
 - **No Third-Party Deps**: Reduces attack surface
 
-## API Endpoints
+## Supported Password Managers
 
-When running in server mode:
+### Currently Supported ✅
 
-- `POST /api/auth/login` - Authenticate and get token
-- `POST /api/auth/logout` - Invalidate token
-- `GET /api/passwords` - List all passwords
-- `POST /api/passwords` - Create new password
-- `GET /api/passwords/:id` - Get password by ID
-- `PUT /api/passwords/:id` - Update password
-- `DELETE /api/passwords/:id` - Delete password
-- `GET /api/passwords/search?q=query` - Search passwords
-- `GET /api/health` - Health check
+- **Proton Pass** - Via export file only (no public API available)
+  - Formats: JSON, CSV, ZIP, PGP-encrypted
+  - Supports: Logins, Secure Notes, Credit Cards, Identities, TOTP
+  - Export from: Settings → Export → Choose format
+  - See [Proton Pass Integration](#proton-pass-integration) section below
+
+### Future Integrations 🚧
+
+The following password managers are planned for future implementation:
+
+- **Bitwarden** - Has public API with OAuth support
+  - Live sync possible
+  - API docs: https://bitwarden.com/help/public-api/
+  
+- **1Password** - Has CLI and Connect API
+  - Official Go SDK available
+  - API docs: https://developer.1password.com/
+  
+- **LastPass** - CSV export only
+  - No official API for third-party apps
+  
+- **KeePass** - File-based, no API
+  - Could sync via cloud storage
+
+**Note**: Currently, OpenPasswd focuses on local password storage with Proton Pass import capability. Additional integrations will be added based on demand and API availability.
+
+## MFA Support
+
+OpenPasswd supports multiple authentication methods:
+
+- **Master Passphrase** - Simple password protection
+- **TOTP (Time-based OTP)** - Google Authenticator, Authy, etc.
+- **YubiKey** - Hardware key authentication
+
+Configure MFA:
+```bash
+openpasswd settings set-passphrase  # Set master passphrase
+openpasswd settings set-totp         # Enable TOTP
+openpasswd settings set-yubikey      # Enable YubiKey
+```
 
 ## Development
 
@@ -148,17 +186,21 @@ When running in server mode:
 ```
 openpasswd/
 ├── cmd/
-│   └── openpass/       # Main application
+│   └── openpasswd/          # Main application
 ├── pkg/
-│   ├── auth/           # Authentication
-│   ├── client/         # HTTP client
-│   ├── config/         # Configuration
-│   ├── crypto/         # Encryption
-│   ├── database/       # Database operations
-│   ├── models/         # Data models
-│   ├── server/         # HTTP server
-│   └── tui/            # Terminal UI
-├── Dockerfile
+│   ├── auth/                # Authentication & providers
+│   ├── config/              # Configuration management
+│   ├── crypto/              # Encryption (AES-256-GCM)
+│   ├── database/            # SQLite operations
+│   ├── models/              # Data models
+│   ├── mfa/                 # TOTP & YubiKey
+│   ├── proton/              # Proton services integration
+│   │   └── pass/            # Proton Pass provider & importer
+│   ├── sources/             # Password manager importers
+│   ├── tui/                 # Terminal UI (Bubble Tea)
+│   └── qrcode/              # QR code generation
+├── install.sh               # Installation script
+├── uninstall.sh             # Uninstallation script
 ├── go.mod
 └── README.md
 ```
@@ -167,17 +209,25 @@ openpasswd/
 
 ```bash
 # Build for current platform
-go build -o openpass ./cmd/openpass
+go build -o openpasswd ./cmd/openpasswd
 
 # Build for Linux
-GOOS=linux GOARCH=amd64 go build -o openpass-linux ./cmd/openpass
+GOOS=linux GOARCH=amd64 go build -o openpasswd-linux ./cmd/openpasswd
 
-# Build for macOS
-GOOS=darwin GOARCH=amd64 go build -o openpass-macos ./cmd/openpass
+# Build for macOS  
+GOOS=darwin GOARCH=amd64 go build -o openpasswd-macos ./cmd/openpasswd
 
 # Build for Windows
-GOOS=windows GOARCH=amd64 go build -o openpass.exe ./cmd/openpass
+GOOS=windows GOARCH=amd64 go build -o openpasswd.exe ./cmd/openpasswd
 ```
+
+### Dependencies
+
+Key dependencies:
+- [Bubble Tea](https://github.com/charmbracelet/bubbletea) - Terminal UI framework
+- [Lipgloss](https://github.com/charmbracelet/lipgloss) - Terminal styling
+- [Modernc SQLite](https://gitlab.com/cznic/sqlite) - Pure Go SQLite
+- [TOTP](https://github.com/pquerna/otp) - TOTP/2FA support
 
 ## Contributing
 

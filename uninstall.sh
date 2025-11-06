@@ -2,7 +2,7 @@
 
 set -e
 
-BINARY_NAME="openpass"
+BINARY_NAME="openpasswd"
 INSTALL_DIR="/usr/local/bin"
 COMPLETION_DIR_BASH="/etc/bash_completion.d"
 COMPLETION_DIR_ZSH="/usr/local/share/zsh/site-functions"
@@ -44,9 +44,9 @@ else
     echo -e "${COLOR_YELLOW}⚠  Binary not found${COLOR_RESET}"
 fi
 
-if [ -L "$INSTALL_DIR/openpasswd" ]; then
-    sudo rm -f "$INSTALL_DIR/openpasswd"
-    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/openpasswd${COLOR_RESET}"
+if [ -L "$INSTALL_DIR/openpass" ]; then
+    sudo rm -f "$INSTALL_DIR/openpass"
+    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/openpass${COLOR_RESET}"
 fi
 
 if [ -L "$INSTALL_DIR/pw" ]; then
