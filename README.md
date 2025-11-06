@@ -12,7 +12,7 @@ A secure, terminal-based password manager built with Go. Store and manage your p
 Install directly from GitHub using curl:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/master/install.sh | bash
 ```
 
 This will:

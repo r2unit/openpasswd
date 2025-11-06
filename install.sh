@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # OpenPasswd Installation Script
-# Install with: curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/main/install.sh | bash
+# Install with: curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/master/install.sh | bash
 # Or clone and run: ./install.sh
 
 set -e
