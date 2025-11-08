@@ -47,3 +47,5 @@ token.json
 # OS
 .DS_Store
 Thumbs.db
+openpasswd
+openpasswd-server
