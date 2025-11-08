@@ -49,6 +49,8 @@ func main() {
 		handleList()
 	case "settings":
 		handleSettings()
+	case "migrate":
+		handleMigrate()
 	case "version", "--version", "-v":
 		handleVersion()
 	case "upgrade":
@@ -95,6 +97,12 @@ func initializeConfig() {
 
 	if err := config.SaveSalt(salt); err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving configuration: %v\n", err)))
+		os.Exit(1)
+	}
+
+	// Save current KDF version (600k iterations)
+	if err := config.SaveKDFVersion(crypto.CurrentKDFVersion); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -204,22 +212,14 @@ func handleImport() {
 	}
 	defer db.Close()
 
-	passphrase := ""
-	if config.HasPassphrase() {
-		fmt.Print("Enter master passphrase: ")
-		passphrase, err = readPassword()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
-			os.Exit(1)
-		}
-		fmt.Println()
-
-		savedPass, err := config.LoadPassphrase()
-		if err != nil || savedPass != passphrase {
-			fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase\n"))
-			os.Exit(1)
-		}
+	// Always prompt for passphrase (plaintext storage removed for security)
+	fmt.Print("Enter master passphrase (or press Enter for none): ")
+	passphrase, err := readPassword()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+		os.Exit(1)
 	}
+	fmt.Println()
 
 	if err := tui.RunImportTUI(db, cfg.Salt, passphrase); err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
@@ -281,22 +281,14 @@ func handleAuthLogin() {
 	}
 	defer db.Close()
 
-	passphrase := ""
-	if config.HasPassphrase() {
-		fmt.Print("Enter master passphrase: ")
-		passphrase, err = readPassword()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
-			os.Exit(1)
-		}
-		fmt.Println()
-
-		savedPass, err := config.LoadPassphrase()
-		if err != nil || savedPass != passphrase {
-			fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase\n"))
-			os.Exit(1)
-		}
+	// Always prompt for passphrase (plaintext storage removed for security)
+	fmt.Print("Enter master passphrase (or press Enter for none): ")
+	passphrase, err := readPassword()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+		os.Exit(1)
 	}
+	fmt.Println()
 
 	if err := tui.RunAuthLoginTUI(db, cfg.Salt, passphrase); err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
@@ -457,228 +449,20 @@ func handleSettings() {
 
 	switch subcommand {
 	case "set-passphrase":
-		cfg, err := config.LoadConfig()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error loading config: %v\n", err)))
-			os.Exit(1)
-		}
-
-		db, err := database.New(cfg.DatabasePath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error opening database: %v\n", err)))
-			os.Exit(1)
-		}
-		defer db.Close()
-
-		passwords, _ := db.ListPasswords()
-		oldPassphrase := ""
-
-		if config.HasPassphrase() {
-			fmt.Print("Enter current master passphrase: ")
-			oldPassphrase, err = readPassword()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
-				os.Exit(1)
-			}
-			fmt.Println()
-
-			oldPass, err := config.LoadPassphrase()
-			if err != nil || oldPass != oldPassphrase {
-				fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase\n"))
-				os.Exit(1)
-			}
-		}
-
-		fmt.Print("Enter new master passphrase: ")
-		newPassphrase, err := readPassword()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
-			os.Exit(1)
-		}
+		fmt.Println(tui.ColorWarning("⚠ This feature has been removed for security reasons."))
+		fmt.Println(tui.ColorInfo("Storing your master passphrase on disk defeats the purpose of encryption."))
+		fmt.Println(tui.ColorInfo("You will be prompted for your passphrase when needed."))
 		fmt.Println()
-
-		fmt.Print("Confirm new master passphrase: ")
-		confirm, err := readPassword()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
-			os.Exit(1)
-		}
-		fmt.Println()
-
-		if newPassphrase != confirm {
-			fmt.Fprintf(os.Stderr, tui.ColorError("Passphrases do not match\n"))
-			os.Exit(1)
-		}
-
-		if len(passwords) > 0 {
-			fmt.Println(tui.ColorInfo(fmt.Sprintf("Re-encrypting %d passwords with new passphrase...", len(passwords))))
-
-			oldEncryptor := crypto.NewEncryptor(oldPassphrase, cfg.Salt)
-			newEncryptor := crypto.NewEncryptor(newPassphrase, cfg.Salt)
-
-			for _, p := range passwords {
-				if p.Name != "" {
-					decrypted, err := oldEncryptor.Decrypt(p.Name)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error decrypting password ID %d: %v\n", p.ID, err)))
-						os.Exit(1)
-					}
-					p.Name, _ = newEncryptor.Encrypt(decrypted)
-				}
-
-				if p.Username != "" {
-					if decrypted, err := oldEncryptor.Decrypt(p.Username); err == nil {
-						p.Username, _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				if p.Password != "" {
-					if decrypted, err := oldEncryptor.Decrypt(p.Password); err == nil {
-						p.Password, _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				if p.URL != "" {
-					if decrypted, err := oldEncryptor.Decrypt(p.URL); err == nil {
-						p.URL, _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				if p.Notes != "" {
-					if decrypted, err := oldEncryptor.Decrypt(p.Notes); err == nil {
-						p.Notes, _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				for key, val := range p.Fields {
-					if decrypted, err := oldEncryptor.Decrypt(val); err == nil {
-						p.Fields[key], _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				if err := db.UpdatePassword(p); err != nil {
-					fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error updating password ID %d: %v\n", p.ID, err)))
-					os.Exit(1)
-				}
-			}
-		}
-
-		if err := config.SavePassphrase(newPassphrase); err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving passphrase: %v\n", err)))
-			os.Exit(1)
-		}
-
-		fmt.Println(tui.ColorSuccess("Master passphrase set successfully!"))
-		if len(passwords) > 0 {
-			fmt.Println(tui.ColorSuccess(fmt.Sprintf("Re-encrypted %d passwords", len(passwords))))
-		}
+		fmt.Println(tui.ColorInfo("Your passwords are still encrypted and secure!"))
+		fmt.Println(tui.ColorInfo("Simply enter your passphrase when running commands like 'openpasswd list'."))
 
 	case "remove-passphrase":
-		cfg, err := config.LoadConfig()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error loading config: %v\n", err)))
-			os.Exit(1)
-		}
-
-		if !config.HasPassphrase() {
-			fmt.Println(tui.ColorWarning("No passphrase is currently set"))
-			return
-		}
-
-		fmt.Print("Enter current master passphrase: ")
-		oldPassphrase, err := readPassword()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
-			os.Exit(1)
-		}
+		fmt.Println(tui.ColorWarning("⚠ This feature has been removed for security reasons."))
+		fmt.Println(tui.ColorInfo("Passphrase storage on disk is no longer supported."))
 		fmt.Println()
-
-		savedPass, err := config.LoadPassphrase()
-		if err != nil || savedPass != oldPassphrase {
-			fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase\n"))
-			os.Exit(1)
-		}
-
-		db, err := database.New(cfg.DatabasePath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error opening database: %v\n", err)))
-			os.Exit(1)
-		}
-		defer db.Close()
-
-		passwords, _ := db.ListPasswords()
-
-		if len(passwords) > 0 {
-			fmt.Println(tui.ColorWarning(fmt.Sprintf("Warning: This will re-encrypt %d passwords without passphrase protection", len(passwords))))
-			fmt.Print("Type 'yes' to confirm: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if confirm != "yes" {
-				fmt.Println("Operation cancelled")
-				return
-			}
-
-			fmt.Println(tui.ColorInfo(fmt.Sprintf("Re-encrypting %d passwords...", len(passwords))))
-
-			oldEncryptor := crypto.NewEncryptor(oldPassphrase, cfg.Salt)
-			newEncryptor := crypto.NewEncryptor("", cfg.Salt)
-
-			for _, p := range passwords {
-				if p.Name != "" {
-					decrypted, err := oldEncryptor.Decrypt(p.Name)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error decrypting password ID %d: %v\n", p.ID, err)))
-						os.Exit(1)
-					}
-					p.Name, _ = newEncryptor.Encrypt(decrypted)
-				}
-
-				if p.Username != "" {
-					if decrypted, err := oldEncryptor.Decrypt(p.Username); err == nil {
-						p.Username, _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				if p.Password != "" {
-					if decrypted, err := oldEncryptor.Decrypt(p.Password); err == nil {
-						p.Password, _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				if p.URL != "" {
-					if decrypted, err := oldEncryptor.Decrypt(p.URL); err == nil {
-						p.URL, _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				if p.Notes != "" {
-					if decrypted, err := oldEncryptor.Decrypt(p.Notes); err == nil {
-						p.Notes, _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				for key, val := range p.Fields {
-					if decrypted, err := oldEncryptor.Decrypt(val); err == nil {
-						p.Fields[key], _ = newEncryptor.Encrypt(decrypted)
-					}
-				}
-
-				if err := db.UpdatePassword(p); err != nil {
-					fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error updating password ID %d: %v\n", p.ID, err)))
-					os.Exit(1)
-				}
-			}
-
-			fmt.Println(tui.ColorSuccess(fmt.Sprintf("Re-encrypted %d passwords", len(passwords))))
-		}
-
-		if err := config.RemovePassphrase(); err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error removing passphrase: %v\n", err)))
-			os.Exit(1)
-		}
-
-		fmt.Println(tui.ColorSuccess("Master passphrase removed successfully!"))
-		fmt.Println(tui.ColorWarning("Note: Passwords no longer require passphrase to access"))
+		fmt.Println(tui.ColorInfo("If you previously stored a passphrase, you can delete it manually:"))
+		configDir, _ := config.GetConfigDir()
+		fmt.Printf(tui.ColorInfo("  rm %s/passphrase\n"), configDir)
 
 	case "set-totp":
 		handleSetTOTP()
@@ -717,22 +501,14 @@ func handleList() {
 	}
 	defer db.Close()
 
-	passphrase := ""
-	if config.HasPassphrase() {
-		fmt.Print("Enter master passphrase: ")
-		passphrase, err = readPassword()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
-			os.Exit(1)
-		}
-		fmt.Println()
-
-		savedPass, err := config.LoadPassphrase()
-		if err != nil || savedPass != passphrase {
-			fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase\n"))
-			os.Exit(1)
-		}
+	// Always prompt for passphrase (plaintext storage removed for security)
+	fmt.Print("Enter master passphrase (or press Enter for none): ")
+	passphrase, err := readPassword()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+		os.Exit(1)
 	}
+	fmt.Println()
 
 	if err := tui.RunListTUI(db, cfg.Salt, passphrase); err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
@@ -848,8 +624,6 @@ func showSettingsHelp() {
 	help := `OpenPasswd - Settings Command
 
 COMMANDS:
-    openpass settings set-passphrase      Set a master passphrase (optional)
-    openpass settings remove-passphrase   Remove the master passphrase
     openpass settings set-totp            Enable TOTP (authenticator app)
     openpass settings remove-totp         Disable TOTP authentication
     openpass settings show-totp-qr        Show TOTP QR code again
@@ -860,17 +634,192 @@ COMMANDS:
 DESCRIPTION:
     Configure OpenPasswd authentication methods. You can combine multiple
     methods for stronger security:
-    - Passphrase: Simple password protection
     - TOTP: Time-based codes from authenticator app
     - YubiKey: Hardware key authentication
+    
+    Note: Your passwords are always encrypted with your master passphrase.
+    You will be prompted for your passphrase when accessing passwords.
+    Storing passphrases on disk has been removed for security reasons.
 
 EXAMPLES:
-    openpass settings set-passphrase      # Set a master passphrase
     openpass settings set-totp            # Enable Google Authenticator
     openpass settings set-yubikey         # Enable YubiKey
     openpass settings show-totp-qr        # Re-display QR code
 `
 	fmt.Println(help)
+}
+
+// handleMigrate handles database migrations for security improvements
+func handleMigrate() {
+	if len(os.Args) < 3 {
+		showMigrateHelp()
+		return
+	}
+
+	subcommand := os.Args[2]
+
+	switch subcommand {
+	case "upgrade-kdf":
+		handleMigrateUpgradeKDF()
+	case "help", "--help", "-h":
+		showMigrateHelp()
+	default:
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Unknown migrate command: %s\n", subcommand)))
+		showMigrateHelp()
+		os.Exit(1)
+	}
+}
+
+func showMigrateHelp() {
+	help := `OpenPasswd - Migrate Command
+
+COMMANDS:
+    openpasswd migrate upgrade-kdf    Upgrade to stronger key derivation (600k iterations)
+    openpasswd migrate help           Show this help message
+
+DESCRIPTION:
+    Migration commands to improve security of existing password databases.
+    
+    upgrade-kdf: Upgrades from legacy 100k iterations to current 600k iterations.
+                 This makes your master passphrase harder to crack if the database
+                 is stolen. All passwords will be re-encrypted.
+
+EXAMPLES:
+    openpasswd migrate upgrade-kdf    # Upgrade key derivation function
+
+SAFETY:
+    - Migrations are safe and preserve all password data
+    - A backup is recommended before migrating
+    - You'll need your master passphrase
+`
+	fmt.Println(help)
+}
+
+func handleMigrateUpgradeKDF() {
+	fmt.Println(tui.ColorInfo("Upgrading KDF to 600k iterations..."))
+	fmt.Println(tui.ColorWarning("This will make your passwords more secure against brute-force attacks."))
+	fmt.Println()
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error loading config: %v\n", err)))
+		os.Exit(1)
+	}
+
+	// Check current KDF version
+	if cfg.KDFVersion == crypto.KDFVersionPBKDF2_600k {
+		fmt.Println(tui.ColorSuccess("Already using 600k iterations. No migration needed."))
+		return
+	}
+
+	if cfg.KDFVersion > crypto.KDFVersionPBKDF2_600k {
+		fmt.Println(tui.ColorSuccess(fmt.Sprintf("Already using a newer KDF version (%d). No migration needed.", cfg.KDFVersion)))
+		return
+	}
+
+	db, err := database.New(cfg.DatabasePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error opening database: %v\n", err)))
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	passwords, _ := db.ListPasswords()
+
+	if len(passwords) == 0 {
+		fmt.Println(tui.ColorInfo("No passwords to migrate."))
+
+		// Just update KDF version
+		if err := config.SaveKDFVersion(crypto.KDFVersionPBKDF2_600k); err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
+			os.Exit(1)
+		}
+
+		fmt.Println(tui.ColorSuccess("✓ KDF version updated to 600k iterations"))
+		return
+	}
+
+	fmt.Print("Enter master passphrase: ")
+	passphrase, err := readPassword()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+		os.Exit(1)
+	}
+	fmt.Println()
+
+	// Test decryption with old KDF
+	oldEncryptor := crypto.NewEncryptorWithVersion(passphrase, cfg.Salt, cfg.KDFVersion)
+	testPass := passwords[0]
+	if _, err := oldEncryptor.Decrypt(testPass.Name); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase or corrupted database\n"))
+		os.Exit(1)
+	}
+
+	fmt.Println(tui.ColorInfo(fmt.Sprintf("Re-encrypting %d passwords with 600k iterations...", len(passwords))))
+	fmt.Println(tui.ColorInfo("This may take a moment (stronger security = slower encryption)..."))
+	fmt.Println()
+
+	// Create new encryptor with 600k iterations
+	newEncryptor := crypto.NewEncryptorWithVersion(passphrase, cfg.Salt, crypto.KDFVersionPBKDF2_600k)
+
+	// Re-encrypt all passwords
+	for i, p := range passwords {
+		fmt.Printf("\rProgress: %d/%d", i+1, len(passwords))
+
+		// Decrypt with old KDF
+		if p.Name != "" {
+			if decrypted, err := oldEncryptor.Decrypt(p.Name); err == nil {
+				p.Name, _ = newEncryptor.Encrypt(decrypted)
+			}
+		}
+
+		if p.Username != "" {
+			if decrypted, err := oldEncryptor.Decrypt(p.Username); err == nil {
+				p.Username, _ = newEncryptor.Encrypt(decrypted)
+			}
+		}
+
+		if p.Password != "" {
+			if decrypted, err := oldEncryptor.Decrypt(p.Password); err == nil {
+				p.Password, _ = newEncryptor.Encrypt(decrypted)
+			}
+		}
+
+		if p.URL != "" {
+			if decrypted, err := oldEncryptor.Decrypt(p.URL); err == nil {
+				p.URL, _ = newEncryptor.Encrypt(decrypted)
+			}
+		}
+
+		if p.Notes != "" {
+			if decrypted, err := oldEncryptor.Decrypt(p.Notes); err == nil {
+				p.Notes, _ = newEncryptor.Encrypt(decrypted)
+			}
+		}
+
+		for key, val := range p.Fields {
+			if decrypted, err := oldEncryptor.Decrypt(val); err == nil {
+				p.Fields[key], _ = newEncryptor.Encrypt(decrypted)
+			}
+		}
+
+		if err := db.UpdatePassword(p); err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError updating password ID %d: %v\n", p.ID, err)))
+			os.Exit(1)
+		}
+	}
+
+	fmt.Println()
+
+	// Save new KDF version
+	if err := config.SaveKDFVersion(crypto.KDFVersionPBKDF2_600k); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
+		os.Exit(1)
+	}
+
+	fmt.Println(tui.ColorSuccess("✓ Migration complete!"))
+	fmt.Println(tui.ColorInfo("  KDF: PBKDF2-HMAC-SHA256 with 600,000 iterations"))
+	fmt.Println(tui.ColorInfo("  Your passwords are now 6x harder to crack!"))
 }
 
 // handleVersion displays version information
