@@ -63,8 +63,6 @@ func main() {
 }
 
 func initializeConfig() {
-	fmt.Println(tui.ColorInfo("Initializing OpenPasswd..."))
-
 	// Check if configuration already exists
 	if _, err := config.LoadConfig(); err == nil {
 		// Configuration exists, prompt user with TUI (fallback to simple prompts if TTY not available)
@@ -89,6 +87,14 @@ func initializeConfig() {
 		}
 	}
 
+	// Run setup TUI to get passphrase and recovery key
+	setupResult, err := tui.RunSetupTUI()
+	if err != nil || setupResult.Cancelled {
+		fmt.Println(tui.ColorInfo("\nSetup cancelled."))
+		os.Exit(0)
+	}
+
+	// Generate salt
 	salt, err := crypto.GenerateSalt()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error generating salt: %v\n", err)))
@@ -106,6 +112,25 @@ func initializeConfig() {
 		os.Exit(1)
 	}
 
+	// Encrypt and save recovery key
+	encryptedRecovery, err := crypto.EncryptRecoveryKey(setupResult.RecoveryKey, setupResult.Passphrase, salt)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error encrypting recovery key: %v\n", err)))
+		os.Exit(1)
+	}
+
+	if err := config.SaveRecoveryKey(encryptedRecovery); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving recovery key: %v\n", err)))
+		os.Exit(1)
+	}
+
+	// Save recovery key hash for verification
+	recoveryHash := crypto.GenerateRecoveryHash(setupResult.RecoveryKey)
+	if err := config.SaveRecoveryHash(crypto.EncodeRecoveryHash(recoveryHash)); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving recovery hash: %v\n", err)))
+		os.Exit(1)
+	}
+
 	if err := config.CreateDefaultConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorWarning(fmt.Sprintf("Warning: Could not create config.toml: %v\n", err)))
 	}
@@ -114,8 +139,10 @@ func initializeConfig() {
 	fmt.Println(tui.ColorSuccess("\n✓ Configuration initialized successfully!"))
 	fmt.Printf("  Config directory: %s\n", configDir)
 	fmt.Printf("  Config file: %s/config.toml\n", configDir)
-	fmt.Printf("\n%s\n", tui.ColorInfo("Run 'openpasswd' to start the password manager"))
-	fmt.Printf("%s\n", tui.ColorInfo("Edit config.toml to customize colors"))
+	fmt.Println()
+	fmt.Println(tui.ColorWarning("⚠  Your recovery key has been saved encrypted."))
+	fmt.Println(tui.ColorInfo("  Keep your handwritten/backup copy in a safe place!"))
+	fmt.Printf("\n%s\n", tui.ColorInfo("Run 'openpasswd list' to start using the password manager"))
 }
 
 func initPromptFallback() tui.InitChoice {
