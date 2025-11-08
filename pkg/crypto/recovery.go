@@ -56,10 +56,11 @@ func GenerateRecoveryKey() (string, error) {
 
 	// Convert entropy to word indices
 	words := make([]string, 24)
+	wordCount := len(recoveryWords)
+
 	for i := 0; i < 24; i++ {
-		// Use 11 bits per word (2048 word list = 2^11)
-		// For our simplified 256-word list, use 8 bits
-		index := entropy[i] % byte(len(recoveryWords))
+		// Use modulo to map byte to word index
+		index := int(entropy[i]) % wordCount
 		words[i] = recoveryWords[index]
 	}
 
