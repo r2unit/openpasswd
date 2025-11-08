@@ -21,10 +21,30 @@ func main() {
 
 	cmd := os.Args[1]
 
+	// Commands that don't require initialization
 	switch cmd {
 	case "init":
 		initializeConfig()
+		return
+	case "version", "--version", "-v":
+		handleVersion()
+		return
+	case "upgrade":
+		handleUpgrade()
+		return
+	case "help", "--help", "-h":
+		showHelp()
+		return
+	}
 
+	// All other commands require initialization
+	if !isInitialized() {
+		showNotInitializedError()
+		os.Exit(1)
+	}
+
+	// Commands that require initialization
+	switch cmd {
 	// TODO: Server mode - Remote sync functionality (future feature)
 	// Will allow syncing passwords across devices via a self-hosted server
 	case "server":
@@ -51,15 +71,31 @@ func main() {
 		handleSettings()
 	case "migrate":
 		handleMigrate()
-	case "version", "--version", "-v":
-		handleVersion()
-	case "upgrade":
-		handleUpgrade()
-	case "help", "--help", "-h":
-		showHelp()
 	default:
 		showHelp()
 	}
+}
+
+// isInitialized checks if OpenPasswd has been initialized
+func isInitialized() bool {
+	_, err := config.LoadConfig()
+	return err == nil
+}
+
+// showNotInitializedError displays a helpful error message
+func showNotInitializedError() {
+	fmt.Println()
+	fmt.Println(tui.ColorError("✗ OpenPasswd has not been initialized yet!"))
+	fmt.Println()
+	fmt.Println(tui.ColorInfo("Please run the following command to set up OpenPasswd:"))
+	fmt.Println()
+	fmt.Println(tui.ColorSuccess("  openpasswd init"))
+	fmt.Println()
+	fmt.Println(tui.ColorInfo("This will:"))
+	fmt.Println(tui.ColorInfo("  • Create your master passphrase"))
+	fmt.Println(tui.ColorInfo("  • Generate a recovery key"))
+	fmt.Println(tui.ColorInfo("  • Set up secure encryption"))
+	fmt.Println()
 }
 
 func initializeConfig() {
