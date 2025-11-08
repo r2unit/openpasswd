@@ -23,6 +23,7 @@ type Keybindings struct {
 type Config struct {
 	DatabasePath string
 	Salt         []byte
+	KDFVersion   int // KDF version (1=100k, 2=600k, 3=Argon2id)
 	Keybindings  Keybindings
 }
 
@@ -138,9 +139,12 @@ func LoadConfig() (*Config, error) {
 		keybindings = DefaultKeybindings()
 	}
 
+	kdfVersion, _ := LoadKDFVersion()
+
 	return &Config{
 		DatabasePath: dbPath,
 		Salt:         salt,
+		KDFVersion:   kdfVersion,
 		Keybindings:  keybindings,
 	}, nil
 }
@@ -156,56 +160,49 @@ func SaveSalt(salt []byte) error {
 	return os.WriteFile(saltPath, []byte(encoded), 0600)
 }
 
-func HasPassphrase() bool {
-	configDir, err := GetConfigDir()
-	if err != nil {
-		return false
-	}
-
-	passphrasePath := filepath.Join(configDir, "passphrase")
-	_, err = os.Stat(passphrasePath)
-	return err == nil
-}
-
-func SavePassphrase(passphrase string) error {
+// SaveKDFVersion saves the KDF version to disk
+func SaveKDFVersion(version int) error {
 	configDir, err := EnsureConfigDir()
 	if err != nil {
 		return err
 	}
 
-	passphrasePath := filepath.Join(configDir, "passphrase")
-	return os.WriteFile(passphrasePath, []byte(passphrase), 0600)
+	versionPath := filepath.Join(configDir, "kdf_version")
+	return os.WriteFile(versionPath, []byte(fmt.Sprintf("%d", version)), 0600)
 }
 
-func LoadPassphrase() (string, error) {
+// LoadKDFVersion loads the KDF version from disk
+func LoadKDFVersion() (int, error) {
 	configDir, err := GetConfigDir()
 	if err != nil {
-		return "", err
+		return 1, err // Default to v1 for backward compatibility
 	}
 
-	passphrasePath := filepath.Join(configDir, "passphrase")
-	data, err := os.ReadFile(passphrasePath)
+	versionPath := filepath.Join(configDir, "kdf_version")
+	data, err := os.ReadFile(versionPath)
 	if err != nil {
-		return "", err
+		if os.IsNotExist(err) {
+			// No version file means legacy database (v1)
+			return 1, nil
+		}
+		return 1, err
 	}
 
-	return string(data), nil
+	var version int
+	fmt.Sscanf(string(data), "%d", &version)
+
+	// Validate version
+	if version < 1 || version > 3 {
+		return 1, nil // Default to v1 if invalid
+	}
+
+	return version, nil
 }
 
-func RemovePassphrase() error {
-	configDir, err := GetConfigDir()
-	if err != nil {
-		return err
-	}
-
-	passphrasePath := filepath.Join(configDir, "passphrase")
-	err = os.Remove(passphrasePath)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	return nil
-}
+// REMOVED: Plaintext passphrase storage functions for security
+// Previously: HasPassphrase(), SavePassphrase(), LoadPassphrase(), RemovePassphrase()
+// These functions stored the master passphrase in plaintext, which defeats the purpose
+// of encryption. Users must now enter their passphrase each time.
 
 func HasTOTP() bool {
 	configDir, err := GetConfigDir()
@@ -314,4 +311,3 @@ func RemoveYubiKey() error {
 
 	return nil
 }
-
