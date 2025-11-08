@@ -113,10 +113,10 @@ func CreateDefaultConfig() error {
 	}
 
 	defaultConfig := `# OpenPasswd Configuration File
-# You can customize the color scheme here
-# Colors use hex format: #RRGGBB
+# You can customize the color scheme and keybindings here
 
 [colors]
+# Colors use hex format: #RRGGBB
 # Search bar border color
 search_bar = "#5FAFFF"
 
@@ -152,6 +152,27 @@ error = "#FF5F5F"
 
 # Success message color
 success = "#00D75F"
+
+[keybindings]
+# Quit the application (nvim-style)
+quit = ":q"
+
+# Alternative quit command (Ctrl+C)
+quit_alt = "ctrl+c"
+
+# Go back / escape current view
+back = "esc"
+
+# Navigate up
+up = "up"
+up_alt = "k"
+
+# Navigate down
+down = "down"
+down_alt = "j"
+
+# Select / confirm
+select = "enter"
 `
 
 	return os.WriteFile(configPath, []byte(defaultConfig), 0600)

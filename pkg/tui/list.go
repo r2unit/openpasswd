@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/r2unit/openpasswd/pkg/config"
 	"github.com/r2unit/openpasswd/pkg/crypto"
 	"github.com/r2unit/openpasswd/pkg/database"
 	"github.com/r2unit/openpasswd/pkg/models"
@@ -20,6 +21,7 @@ type listModel struct {
 	filteredPasswords []*models.Password
 	cursor            int
 	searchInput       string
+	commandInput      string
 	showDetails       bool
 	selectedPass      *models.Password
 	showPassword      bool
@@ -28,6 +30,7 @@ type listModel struct {
 	copiedMessage     string
 	width             int
 	height            int
+	keybindings       config.Keybindings
 }
 
 type detailField struct {
@@ -78,6 +81,7 @@ var (
 func NewListTUI(db *database.DB, salt []byte, passphrase string) *listModel {
 	encryptor := crypto.NewEncryptor(passphrase, salt)
 	passwords, _ := db.ListPasswords()
+	keybindings, _ := config.LoadKeybindings()
 
 	return &listModel{
 		db:                db,
@@ -86,8 +90,10 @@ func NewListTUI(db *database.DB, salt []byte, passphrase string) *listModel {
 		filteredPasswords: passwords,
 		cursor:            0,
 		searchInput:       "",
+		commandInput:      "",
 		width:             80,
 		height:            24,
+		keybindings:       keybindings,
 	}
 }
 
@@ -102,8 +108,41 @@ func (m listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
+		key := msg.String()
+
+		// Handle command mode (nvim-style)
+		if key == ":" && m.commandInput == "" && m.searchInput == "" && !m.showDetails {
+			m.commandInput = ":"
+			return m, nil
+		}
+
+		// If in command mode
+		if m.commandInput != "" {
+			if key == "enter" {
+				// Execute command
+				if m.commandInput == m.keybindings.Quit {
+					return m, tea.Quit
+				}
+				m.commandInput = ""
+				return m, nil
+			} else if key == "backspace" {
+				if len(m.commandInput) > 0 {
+					m.commandInput = m.commandInput[:len(m.commandInput)-1]
+				}
+				return m, nil
+			} else if key == "esc" {
+				m.commandInput = ""
+				return m, nil
+			} else if len(key) == 1 {
+				m.commandInput += key
+				return m, nil
+			}
+			return m, nil
+		}
+
+		// Normal mode key handling
+		switch key {
+		case m.keybindings.QuitAlt:
 			if m.showDetails {
 				m.showDetails = false
 				m.showPassword = false
@@ -111,7 +150,7 @@ func (m listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Quit
 
-		case "esc":
+		case m.keybindings.Back:
 			if m.showDetails {
 				m.showDetails = false
 				m.showPassword = false
@@ -128,7 +167,7 @@ func (m listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showPassword = !m.showPassword
 			}
 
-		case "up", "k":
+		case m.keybindings.Up, m.keybindings.UpAlt:
 			if m.showDetails {
 				if m.detailCursor > 0 {
 					m.detailCursor--
@@ -138,7 +177,7 @@ func (m listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			}
 
-		case "down", "j":
+		case m.keybindings.Down, m.keybindings.DownAlt:
 			if m.showDetails {
 				if m.detailCursor < len(m.detailFields)-1 {
 					m.detailCursor++
@@ -158,7 +197,7 @@ func (m listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "enter":
+		case m.keybindings.Select:
 			if m.showDetails {
 				if len(m.detailFields) > 0 && m.detailCursor < len(m.detailFields) {
 					field := m.detailFields[m.detailCursor]
@@ -372,7 +411,12 @@ func (m listModel) View() string {
 	}
 
 	s.WriteString("\n")
-	s.WriteString(listNormalStyle.Render("↑/↓: navigate • enter: view details • type to search • esc: clear/back • q: quit"))
+
+	if m.commandInput != "" {
+		s.WriteString(listSelectedStyle.Render(m.commandInput + "▋"))
+	} else {
+		s.WriteString(listNormalStyle.Render("↑/↓ or k/j: navigate • enter: view details • type to search • esc: clear/back • :q or ctrl+c: quit"))
+	}
 
 	return s.String()
 }
@@ -438,7 +482,11 @@ func (m listModel) renderDetails() string {
 	s.WriteString(listValueStyle.Render(string(m.selectedPass.Type)))
 	s.WriteString("\n")
 
-	s.WriteString(listNormalStyle.Render("↑/↓: select field • enter: copy • c: copy all • tab: toggle password • q/esc: go back"))
+	if m.commandInput != "" {
+		s.WriteString(listSelectedStyle.Render(m.commandInput + "▋"))
+	} else {
+		s.WriteString(listNormalStyle.Render("↑/↓ or k/j: select field • enter: copy • c: copy all • tab: toggle password • :q/esc/ctrl+c: go back"))
+	}
 
 	return s.String()
 }

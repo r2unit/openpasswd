@@ -2,7 +2,8 @@
 
 set -e
 
-BINARY_NAME="openpasswd"
+CLIENT_BINARY="openpasswd"
+SERVER_BINARY="openpasswd-server"
 INSTALL_DIR="/usr/local/bin"
 COMPLETION_DIR_BASH="/etc/bash_completion.d"
 COMPLETION_DIR_ZSH="/usr/local/share/zsh/site-functions"
@@ -36,12 +37,19 @@ if [ "$confirm" != "yes" ]; then
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[1/3]${COLOR_RESET} Removing binary..."
-if [ -f "$INSTALL_DIR/$BINARY_NAME" ]; then
-    sudo rm -f "$INSTALL_DIR/$BINARY_NAME"
-    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/$BINARY_NAME${COLOR_RESET}"
+echo -e "${COLOR_BLUE}[1/4]${COLOR_RESET} Removing binaries..."
+if [ -f "$INSTALL_DIR/$CLIENT_BINARY" ]; then
+    sudo rm -f "$INSTALL_DIR/$CLIENT_BINARY"
+    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/$CLIENT_BINARY${COLOR_RESET}"
 else
-    echo -e "${COLOR_YELLOW}⚠  Binary not found${COLOR_RESET}"
+    echo -e "${COLOR_YELLOW}⚠  Client binary not found${COLOR_RESET}"
+fi
+
+if [ -f "$INSTALL_DIR/$SERVER_BINARY" ]; then
+    sudo rm -f "$INSTALL_DIR/$SERVER_BINARY"
+    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/$SERVER_BINARY${COLOR_RESET}"
+else
+    echo -e "${COLOR_YELLOW}⚠  Server binary not found${COLOR_RESET}"
 fi
 
 if [ -L "$INSTALL_DIR/openpass" ]; then
@@ -55,7 +63,19 @@ if [ -L "$INSTALL_DIR/pw" ]; then
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[2/3]${COLOR_RESET} Removing bash completion..."
+echo -e "${COLOR_BLUE}[2/4]${COLOR_RESET} Removing aliases..."
+if [ -L "$INSTALL_DIR/openpass" ]; then
+    sudo rm -f "$INSTALL_DIR/openpass"
+    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/openpass${COLOR_RESET}"
+fi
+
+if [ -L "$INSTALL_DIR/pw" ]; then
+    sudo rm -f "$INSTALL_DIR/pw"
+    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/pw${COLOR_RESET}"
+fi
+
+echo ""
+echo -e "${COLOR_BLUE}[3/4]${COLOR_RESET} Removing bash completion..."
 if [ -f "$COMPLETION_DIR_BASH/openpass" ]; then
     sudo rm -f "$COMPLETION_DIR_BASH/openpass"
     echo -e "${COLOR_GREEN}✓ Removed bash completion${COLOR_RESET}"
@@ -64,7 +84,7 @@ else
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[3/3]${COLOR_RESET} Removing zsh completion..."
+echo -e "${COLOR_BLUE}[4/4]${COLOR_RESET} Removing zsh completion..."
 if [ -f "$COMPLETION_DIR_ZSH/_openpass" ]; then
     sudo rm -f "$COMPLETION_DIR_ZSH/_openpass"
     echo -e "${COLOR_GREEN}✓ Removed zsh completion${COLOR_RESET}"

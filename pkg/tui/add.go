@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/r2unit/openpasswd/pkg/config"
 	"github.com/r2unit/openpasswd/pkg/crypto"
 	"github.com/r2unit/openpasswd/pkg/database"
 	"github.com/r2unit/openpasswd/pkg/models"
@@ -24,6 +25,7 @@ type addModel struct {
 	inputOrder      []string
 	currentInput    string
 	currentInputIdx int
+	commandInput    string
 	err             error
 	success         bool
 	loading         bool
@@ -32,6 +34,7 @@ type addModel struct {
 	height          int
 	showPassword    map[string]bool
 	successTimer    int
+	keybindings     config.Keybindings
 }
 
 var passwordTypes = []struct {
@@ -83,6 +86,8 @@ func NewAddTUI(db *database.DB, salt []byte, passphrase string, passwordType str
 		encryptor = crypto.NewEncryptor(passphrase, salt)
 	}
 
+	keybindings, _ := config.LoadKeybindings()
+
 	m := &addModel{
 		db:           db,
 		salt:         salt,
@@ -93,6 +98,8 @@ func NewAddTUI(db *database.DB, salt []byte, passphrase string, passwordType str
 		showPassword: make(map[string]bool),
 		width:        80,
 		height:       24,
+		keybindings:  keybindings,
+		commandInput: "",
 	}
 
 	if passwordType != "" {
@@ -185,13 +192,46 @@ func (m addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		switch msg.String() {
-		case "ctrl+c", "q":
+		key := msg.String()
+
+		// Handle command mode (nvim-style) - only when not in input mode
+		if key == ":" && m.commandInput == "" && m.step == 0 {
+			m.commandInput = ":"
+			return m, nil
+		}
+
+		// If in command mode
+		if m.commandInput != "" {
+			if key == "enter" {
+				// Execute command
+				if m.commandInput == m.keybindings.Quit {
+					return m, tea.Quit
+				}
+				m.commandInput = ""
+				return m, nil
+			} else if key == "backspace" {
+				if len(m.commandInput) > 0 {
+					m.commandInput = m.commandInput[:len(m.commandInput)-1]
+				}
+				return m, nil
+			} else if key == "esc" {
+				m.commandInput = ""
+				return m, nil
+			} else if len(key) == 1 {
+				m.commandInput += key
+				return m, nil
+			}
+			return m, nil
+		}
+
+		// Normal mode key handling
+		switch key {
+		case m.keybindings.QuitAlt:
 			if m.step == 0 || m.err != nil {
 				return m, tea.Quit
 			}
 
-		case "esc":
+		case m.keybindings.Back:
 			if m.step == 1 {
 				m.step = 0
 				m.passwordType = ""
@@ -208,7 +248,7 @@ func (m addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "up", "k":
+		case m.keybindings.Up, m.keybindings.UpAlt:
 			if m.step == 0 {
 				if m.cursor > 0 {
 					m.cursor--
@@ -220,7 +260,7 @@ func (m addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "down", "j":
+		case m.keybindings.Down, m.keybindings.DownAlt:
 			if m.step == 0 {
 				if m.cursor < len(passwordTypes)-1 {
 					m.cursor++
@@ -232,7 +272,7 @@ func (m addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "enter":
+		case m.keybindings.Select:
 			if m.step == 0 {
 				m.passwordType = passwordTypes[m.cursor].name
 				m.step = 1
@@ -411,7 +451,7 @@ func (m addModel) View() string {
 	}
 
 	if m.err != nil {
-		return addErrorStyle.Render("✗ ") + fmt.Sprintf("Error: %v\n\nPress 'q' to exit", m.err)
+		return addErrorStyle.Render("✗ ") + fmt.Sprintf("Error: %v\n\nPress ':q' or 'ctrl+c' to exit", m.err)
 	}
 
 	if m.loading {
@@ -435,7 +475,11 @@ func (m addModel) View() string {
 		}
 
 		s.WriteString("\n")
-		s.WriteString(addNormalStyle.Render("↑/↓: navigate • enter: select • q: quit"))
+		if m.commandInput != "" {
+			s.WriteString(addSelectedStyle.Render(m.commandInput + "▋"))
+		} else {
+			s.WriteString(addNormalStyle.Render("↑/↓ or k/j: navigate • enter: select • :q or ctrl+c: quit"))
+		}
 	} else if m.step == 1 {
 		s.WriteString(addTitleStyle.Render(fmt.Sprintf("Add %s", strings.Title(m.passwordType))))
 		s.WriteString("\n\n")
@@ -477,7 +521,7 @@ func (m addModel) View() string {
 		}
 
 		s.WriteString("\n")
-		s.WriteString(addNormalStyle.Render("↑/↓: navigate • tab: toggle password • enter: next/save • esc: back"))
+		s.WriteString(addNormalStyle.Render("↑/↓ or k/j: navigate • tab: toggle password • enter: next/save • esc: back"))
 	}
 
 	return s.String()

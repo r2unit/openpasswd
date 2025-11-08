@@ -146,29 +146,32 @@ build_from_source() {
     
     TEMP_DIR=$(mktemp -d)
     echo -e "${COLOR_BLUE}Cloning repository...${COLOR_RESET}"
-    git clone --depth 1 "$REPO_URL" "$TEMP_DIR" 2>&1 | grep -v "Cloning into" || true
-    
-    cd "$TEMP_DIR"
+    if ! git clone --depth 1 "$REPO_URL" "$TEMP_DIR" 2>&1 | grep -v "Cloning into" || true; then
+        echo -e "${COLOR_RED}✗ Failed to clone repository${COLOR_RESET}"
+        exit 1
+    fi
     
     # Get version info for build
-    VERSION=$(grep 'Version = ' pkg/version/version.go | sed 's/.*"\(.*\)".*/\1/' || echo "dev")
-    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    if [ -f "$TEMP_DIR/pkg/version/version.go" ]; then
+        VERSION=$(grep 'Version = ' "$TEMP_DIR/pkg/version/version.go" | sed 's/.*"\(.*\)".*/\1/' || echo "dev")
+    else
+        VERSION="dev"
+    fi
+    GIT_COMMIT=$(cd "$TEMP_DIR" && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
     
     echo -e "${COLOR_BLUE}Building version ${VERSION} (commit: ${GIT_COMMIT})...${COLOR_RESET}"
-    go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
+    
+    # Build in the temp directory
+    if (cd "$TEMP_DIR" && go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
                         -X 'github.com/r2unit/openpasswd/pkg/version.GitCommit=${GIT_COMMIT}' \
                         -X 'github.com/r2unit/openpasswd/pkg/version.BuildDate=${BUILD_DATE}'" \
-             -o "$BINARY_NAME" ./cmd/openpasswd
-    
-    if [ $? -eq 0 ]; then
+             -o "$BINARY_NAME" ./cmd/client); then
         echo -e "${COLOR_GREEN}✓ Build successful${COLOR_RESET}"
     else
         echo -e "${COLOR_RED}✗ Build failed${COLOR_RESET}"
         exit 1
     fi
-    
-    cd - > /dev/null
 }
 
 echo -e "${COLOR_BLUE}╔══════════════════════════════════════════════════════════════╗${COLOR_RESET}"

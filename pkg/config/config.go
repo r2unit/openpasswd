@@ -5,11 +5,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/r2unit/openpasswd/pkg/toml"
 )
+
+type Keybindings struct {
+	Quit    string `toml:"quit"`
+	QuitAlt string `toml:"quit_alt"`
+	Back    string `toml:"back"`
+	Up      string `toml:"up"`
+	UpAlt   string `toml:"up_alt"`
+	Down    string `toml:"down"`
+	DownAlt string `toml:"down_alt"`
+	Select  string `toml:"select"`
+}
 
 type Config struct {
 	DatabasePath string
 	Salt         []byte
+	Keybindings  Keybindings
 }
 
 func GetConfigDir() (string, error) {
@@ -34,6 +48,69 @@ func EnsureConfigDir() (string, error) {
 	return configDir, nil
 }
 
+func DefaultKeybindings() Keybindings {
+	return Keybindings{
+		Quit:    ":q",
+		QuitAlt: "ctrl+c",
+		Back:    "esc",
+		Up:      "up",
+		UpAlt:   "k",
+		Down:    "down",
+		DownAlt: "j",
+		Select:  "enter",
+	}
+}
+
+func LoadKeybindings() (Keybindings, error) {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return DefaultKeybindings(), nil
+	}
+
+	configPath := filepath.Join(configDir, "config.toml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return DefaultKeybindings(), nil
+	}
+
+	type ConfigFile struct {
+		Keybindings Keybindings `toml:"keybindings"`
+	}
+
+	var cfg ConfigFile
+	_, err = toml.DecodeFile(configPath, &cfg)
+	if err != nil {
+		return DefaultKeybindings(), nil
+	}
+
+	kb := DefaultKeybindings()
+	if cfg.Keybindings.Quit != "" {
+		kb.Quit = cfg.Keybindings.Quit
+	}
+	if cfg.Keybindings.QuitAlt != "" {
+		kb.QuitAlt = cfg.Keybindings.QuitAlt
+	}
+	if cfg.Keybindings.Back != "" {
+		kb.Back = cfg.Keybindings.Back
+	}
+	if cfg.Keybindings.Up != "" {
+		kb.Up = cfg.Keybindings.Up
+	}
+	if cfg.Keybindings.UpAlt != "" {
+		kb.UpAlt = cfg.Keybindings.UpAlt
+	}
+	if cfg.Keybindings.Down != "" {
+		kb.Down = cfg.Keybindings.Down
+	}
+	if cfg.Keybindings.DownAlt != "" {
+		kb.DownAlt = cfg.Keybindings.DownAlt
+	}
+	if cfg.Keybindings.Select != "" {
+		kb.Select = cfg.Keybindings.Select
+	}
+
+	return kb, nil
+}
+
 func LoadConfig() (*Config, error) {
 	configDir, err := GetConfigDir()
 	if err != nil {
@@ -56,9 +133,15 @@ func LoadConfig() (*Config, error) {
 
 	dbPath := filepath.Join(configDir, "passwords.db")
 
+	keybindings, err := LoadKeybindings()
+	if err != nil {
+		keybindings = DefaultKeybindings()
+	}
+
 	return &Config{
 		DatabasePath: dbPath,
 		Salt:         salt,
+		Keybindings:  keybindings,
 	}, nil
 }
 
@@ -231,3 +314,4 @@ func RemoveYubiKey() error {
 
 	return nil
 }
+

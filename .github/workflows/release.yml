@@ -55,7 +55,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version $VERSION"
 
-      - name: Build binary
+      - name: Build binaries
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -65,20 +65,32 @@ jobs:
           GIT_COMMIT=$(git rev-parse --short HEAD)
           BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
           
-          BINARY_NAME="openpasswd-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          CLIENT_BINARY="openpasswd-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          SERVER_BINARY="openpasswd-server-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
           
+          # Build client
           go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
                               -X 'github.com/r2unit/openpasswd/pkg/version.GitCommit=${GIT_COMMIT}' \
                               -X 'github.com/r2unit/openpasswd/pkg/version.BuildDate=${BUILD_DATE}' \
                               -s -w" \
                    -trimpath \
-                   -o "${BINARY_NAME}" \
-                   ./cmd/openpasswd
+                   -o "${CLIENT_BINARY}" \
+                   ./cmd/client
+          
+          # Build server
+          go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
+                              -X 'github.com/r2unit/openpasswd/pkg/version.GitCommit=${GIT_COMMIT}' \
+                              -X 'github.com/r2unit/openpasswd/pkg/version.BuildDate=${BUILD_DATE}' \
+                              -s -w" \
+                   -trimpath \
+                   -o "${SERVER_BINARY}" \
+                   ./cmd/server
           
           # Create checksums
-          sha256sum "${BINARY_NAME}" > "${BINARY_NAME}.sha256"
+          sha256sum "${CLIENT_BINARY}" > "${CLIENT_BINARY}.sha256"
+          sha256sum "${SERVER_BINARY}" > "${SERVER_BINARY}.sha256"
           
-          echo "Built ${BINARY_NAME}"
+          echo "Built ${CLIENT_BINARY} and ${SERVER_BINARY}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -86,6 +98,7 @@ jobs:
           name: binaries
           path: |
             openpasswd-*
+            openpasswd-server-*
             *.sha256
 
   release:
@@ -124,6 +137,7 @@ jobs:
           prerelease: false
           files: |
             dist/openpasswd-*
+            dist/openpasswd-server-*
             dist/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

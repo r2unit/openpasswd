@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/r2unit/openpasswd/pkg/config"
 	"github.com/r2unit/openpasswd/pkg/crypto"
 	"github.com/r2unit/openpasswd/pkg/database"
 	"github.com/r2unit/openpasswd/pkg/models"
@@ -31,8 +32,10 @@ type model struct {
 	passwords    []*models.Password
 	selectedPass *models.Password
 	input        string
+	commandInput string
 	err          error
 	message      string
+	keybindings  config.Keybindings
 }
 
 var (
@@ -74,10 +77,13 @@ var (
 
 func NewBubbleTea(db *database.DB, salt []byte, passphrase string) *model {
 	encryptor := crypto.NewEncryptor(passphrase, salt)
+	keybindings, _ := config.LoadKeybindings()
 	return &model{
-		db:          db,
-		encryptor:   encryptor,
-		currentView: menuView,
+		db:           db,
+		encryptor:    encryptor,
+		currentView:  menuView,
+		keybindings:  keybindings,
+		commandInput: "",
 	}
 }
 
@@ -88,22 +94,55 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
+		key := msg.String()
+
+		// Handle command mode (nvim-style)
+		if key == ":" && m.commandInput == "" {
+			m.commandInput = ":"
+			return m, nil
+		}
+
+		// If in command mode
+		if m.commandInput != "" {
+			if key == "enter" {
+				// Execute command
+				if m.commandInput == m.keybindings.Quit {
+					return m, tea.Quit
+				}
+				m.commandInput = ""
+				return m, nil
+			} else if key == "backspace" {
+				if len(m.commandInput) > 0 {
+					m.commandInput = m.commandInput[:len(m.commandInput)-1]
+				}
+				return m, nil
+			} else if key == "esc" {
+				m.commandInput = ""
+				return m, nil
+			} else if len(key) == 1 {
+				m.commandInput += key
+				return m, nil
+			}
+			return m, nil
+		}
+
+		// Normal mode key handling
+		switch key {
+		case m.keybindings.QuitAlt:
 			return m, tea.Quit
 
-		case "esc":
+		case m.keybindings.Back:
 			m.currentView = menuView
 			m.message = ""
 			m.err = nil
 			return m, nil
 
-		case "up", "k":
+		case m.keybindings.Up, m.keybindings.UpAlt:
 			if m.cursor > 0 {
 				m.cursor--
 			}
 
-		case "down", "j":
+		case m.keybindings.Down, m.keybindings.DownAlt:
 			maxCursor := 0
 			switch m.currentView {
 			case menuView:
@@ -130,7 +169,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "enter":
+		case m.keybindings.Select:
 			return m.handleEnter()
 		}
 	}
@@ -206,8 +245,14 @@ func (m model) View() string {
 	}
 
 	s.WriteString("\n\n")
-	s.WriteString(normalStyle.Render("Press 'q' to quit, 'esc' to go back, ↑/↓ or numbers to navigate, enter to select"))
-	s.WriteString("\n")
+
+	if m.commandInput != "" {
+		s.WriteString(selectedStyle.Render(m.commandInput + "▋"))
+		s.WriteString("\n")
+	} else {
+		s.WriteString(normalStyle.Render("Press ':q' or 'ctrl+c' to quit, 'esc' to go back, ↑/↓ or k/j to navigate, enter to select"))
+		s.WriteString("\n")
+	}
 
 	return s.String()
 }
