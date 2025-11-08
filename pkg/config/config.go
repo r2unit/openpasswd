@@ -377,3 +377,42 @@ func HasRecoveryKey() bool {
 	_, err = os.Stat(recoveryPath)
 	return err == nil
 }
+
+// IsVersionCheckDisabled checks if automatic version checking is disabled
+func IsVersionCheckDisabled() bool {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return false
+	}
+
+	disablePath := filepath.Join(configDir, "disable_version_check")
+	_, err = os.Stat(disablePath)
+	return err == nil
+}
+
+// DisableVersionCheck disables automatic version checking
+func DisableVersionCheck() error {
+	configDir, err := EnsureConfigDir()
+	if err != nil {
+		return err
+	}
+
+	disablePath := filepath.Join(configDir, "disable_version_check")
+	return os.WriteFile(disablePath, []byte("disabled"), 0644)
+}
+
+// EnableVersionCheck enables automatic version checking
+func EnableVersionCheck() error {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return err
+	}
+
+	disablePath := filepath.Join(configDir, "disable_version_check")
+	err = os.Remove(disablePath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
+}
