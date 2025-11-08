@@ -13,9 +13,12 @@ import (
 )
 
 const (
-	saltSize   = 32
-	keySize    = 32
-	iterations = 100000
+	saltSize = 32
+	keySize  = 32
+	// Legacy iteration count (deprecated)
+	iterationsLegacy = 100000
+	// Current iteration count (OWASP recommended)
+	iterationsCurrent = 600000
 )
 
 type Encryptor struct {
@@ -57,8 +60,16 @@ func pbkdf2Key(password, salt []byte, iterations, keyLen int, h func() hash.Hash
 	return dk[:keyLen]
 }
 
+// NewEncryptor creates an encryptor using the current KDF version (600k iterations)
 func NewEncryptor(passphrase string, salt []byte) *Encryptor {
-	key := pbkdf2Key([]byte(passphrase), salt, iterations, keySize, sha256.New)
+	key := pbkdf2Key([]byte(passphrase), salt, iterationsCurrent, keySize, sha256.New)
+	return &Encryptor{key: key}
+}
+
+// NewEncryptorWithVersion creates an encryptor with a specific KDF version
+func NewEncryptorWithVersion(passphrase string, salt []byte, version int) *Encryptor {
+	params := GetKDFParams(version)
+	key := pbkdf2Key([]byte(passphrase), salt, params.Iterations, keySize, sha256.New)
 	return &Encryptor{key: key}
 }
 
