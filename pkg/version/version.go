@@ -412,3 +412,99 @@ func GetLatestVersion() (string, error) {
 	}
 	return strings.TrimPrefix(release.TagName, "v"), nil
 }
+
+// VersionCache represents a cached version check result
+type VersionCache struct {
+	LatestVersion   string    `json:"latest_version"`
+	UpdateAvailable bool      `json:"update_available"`
+	CheckedAt       time.Time `json:"checked_at"`
+}
+
+// getCacheFilePath returns the path to the version cache file
+func getCacheFilePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	cacheDir := filepath.Join(home, ".cache", "openpasswd")
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return "", err
+	}
+	return filepath.Join(cacheDir, "version_check.json"), nil
+}
+
+// LoadVersionCache loads the cached version check result
+func LoadVersionCache() (*VersionCache, error) {
+	cachePath, err := getCacheFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil // No cache exists
+		}
+		return nil, err
+	}
+
+	var cache VersionCache
+	if err := json.Unmarshal(data, &cache); err != nil {
+		return nil, err
+	}
+
+	// Check if cache is expired (24 hours)
+	if time.Since(cache.CheckedAt) > 24*time.Hour {
+		return nil, nil // Cache expired
+	}
+
+	return &cache, nil
+}
+
+// SaveVersionCache saves the version check result to cache
+func SaveVersionCache(latestVersion string, updateAvailable bool) error {
+	cachePath, err := getCacheFilePath()
+	if err != nil {
+		return err
+	}
+
+	cache := VersionCache{
+		LatestVersion:   latestVersion,
+		UpdateAvailable: updateAvailable,
+		CheckedAt:       time.Now(),
+	}
+
+	data, err := json.Marshal(cache)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(cachePath, data, 0644)
+}
+
+// CheckForUpdateCached checks for updates using cache (24hr expiry)
+// Returns (latestVersion, updateAvailable, fromCache, error)
+func CheckForUpdateCached() (string, bool, bool, error) {
+	// Try to load from cache first
+	cache, err := LoadVersionCache()
+	if err == nil && cache != nil {
+		// Cache hit
+		return cache.LatestVersion, cache.UpdateAvailable, true, nil
+	}
+
+	// Cache miss or error - check GitHub
+	release, updateAvailable, err := CheckForUpdate()
+	if err != nil {
+		return "", false, false, err
+	}
+
+	latestVersion := Version
+	if release != nil {
+		latestVersion = strings.TrimPrefix(release.TagName, "v")
+	}
+
+	// Save to cache (ignore cache save errors)
+	_ = SaveVersionCache(latestVersion, updateAvailable)
+
+	return latestVersion, updateAvailable, false, nil
+}
