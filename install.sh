@@ -146,7 +146,7 @@ build_from_source() {
     
     TEMP_DIR=$(mktemp -d)
     echo -e "${COLOR_BLUE}Cloning repository...${COLOR_RESET}"
-    if ! git clone --depth 1 "$REPO_URL" "$TEMP_DIR" 2>&1 | grep -v "Cloning into" || true; then
+    if ! git clone --depth 1 "$REPO_URL" "$TEMP_DIR" >/dev/null 2>&1; then
         echo -e "${COLOR_RED}✗ Failed to clone repository${COLOR_RESET}"
         exit 1
     fi
