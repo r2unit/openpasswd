@@ -25,6 +25,11 @@ type Encryptor struct {
 	key []byte
 }
 
+// GetKey returns the encryption key (for HMAC derivation)
+func (e *Encryptor) GetKey() []byte {
+	return e.key
+}
+
 func pbkdf2Key(password, salt []byte, iterations, keyLen int, h func() hash.Hash) []byte {
 	prf := hmac.New(h, password)
 	hashLen := prf.Size()
