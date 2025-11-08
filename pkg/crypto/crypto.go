@@ -74,8 +74,22 @@ func NewEncryptor(passphrase string, salt []byte) *Encryptor {
 // NewEncryptorWithVersion creates an encryptor with a specific KDF version
 func NewEncryptorWithVersion(passphrase string, salt []byte, version int) *Encryptor {
 	params := GetKDFParams(version)
-	key := pbkdf2Key([]byte(passphrase), salt, params.Iterations, keySize, sha256.New)
+
+	var key []byte
+	if version == KDFVersionArgon2id && params.Argon2 != nil {
+		// Use Argon2id
+		key = Argon2idKey([]byte(passphrase), salt, *params.Argon2)
+	} else {
+		// Use PBKDF2
+		key = pbkdf2Key([]byte(passphrase), salt, params.Iterations, keySize, sha256.New)
+	}
+
 	return &Encryptor{key: key}
+}
+
+// NewEncryptorArgon2id creates an encryptor using Argon2id
+func NewEncryptorArgon2id(passphrase string, salt []byte) *Encryptor {
+	return NewEncryptorWithVersion(passphrase, salt, KDFVersionArgon2id)
 }
 
 func GenerateSalt() ([]byte, error) {

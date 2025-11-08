@@ -13,8 +13,8 @@ const (
 // KDFParams holds parameters for key derivation
 type KDFParams struct {
 	Version    int
-	Iterations int
-	// Future: Memory, Threads for Argon2
+	Iterations int           // For PBKDF2
+	Argon2     *Argon2Params // For Argon2id
 }
 
 // GetKDFParams returns the parameters for a given KDF version
@@ -24,17 +24,20 @@ func GetKDFParams(version int) KDFParams {
 		return KDFParams{
 			Version:    KDFVersionPBKDF2_100k,
 			Iterations: 100000,
+			Argon2:     nil,
 		}
 	case KDFVersionPBKDF2_600k:
 		return KDFParams{
 			Version:    KDFVersionPBKDF2_600k,
 			Iterations: 600000,
+			Argon2:     nil,
 		}
 	case KDFVersionArgon2id:
-		// Future implementation
+		params := DefaultArgon2Params()
 		return KDFParams{
 			Version:    KDFVersionArgon2id,
-			Iterations: 0, // Argon2 doesn't use iterations the same way
+			Iterations: 0,
+			Argon2:     &params,
 		}
 	default:
 		// Default to current version
