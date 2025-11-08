@@ -311,3 +311,69 @@ func RemoveYubiKey() error {
 
 	return nil
 }
+
+// SaveRecoveryKey saves the encrypted recovery key
+func SaveRecoveryKey(encryptedKey string) error {
+	configDir, err := EnsureConfigDir()
+	if err != nil {
+		return err
+	}
+
+	recoveryPath := filepath.Join(configDir, "recovery_key")
+	return os.WriteFile(recoveryPath, []byte(encryptedKey), 0600)
+}
+
+// LoadRecoveryKey loads the encrypted recovery key
+func LoadRecoveryKey() (string, error) {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	recoveryPath := filepath.Join(configDir, "recovery_key")
+	data, err := os.ReadFile(recoveryPath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
+// SaveRecoveryHash saves the recovery key hash for verification
+func SaveRecoveryHash(hash string) error {
+	configDir, err := EnsureConfigDir()
+	if err != nil {
+		return err
+	}
+
+	hashPath := filepath.Join(configDir, "recovery_hash")
+	return os.WriteFile(hashPath, []byte(hash), 0600)
+}
+
+// LoadRecoveryHash loads the recovery key hash
+func LoadRecoveryHash() (string, error) {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	hashPath := filepath.Join(configDir, "recovery_hash")
+	data, err := os.ReadFile(hashPath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
+// HasRecoveryKey checks if a recovery key exists
+func HasRecoveryKey() bool {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return false
+	}
+
+	recoveryPath := filepath.Join(configDir, "recovery_key")
+	_, err = os.Stat(recoveryPath)
+	return err == nil
+}
