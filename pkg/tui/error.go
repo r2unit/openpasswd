@@ -12,23 +12,22 @@ import (
 
 // Error messages with personality
 var wrongPassphraseMessages = []string{
-	"🔒 Nope! That's not it, chief.",
-	"🤔 Nice try, but that's not the magic word.",
-	"🙅 Access denied! (Insert dramatic gasp here)",
-	"🎯 So close! Just kidding, not even close.",
-	"🔐 That passphrase is as wrong as pineapple on pizza.",
-	"🚫 Computer says no. Try again, human.",
-	"🤖 Error 401: Unauthorized. Also, wrong passphrase.",
-	"🎭 Plot twist: That's not your passphrase!",
-	"🔑 Wrong key, wrong door, wrong passphrase.",
-	"🧙 The passphrase you seek is not the one you speak.",
-	"🎪 Congratulations! You've found the wrong passphrase!",
-	"🌮 That passphrase is more scrambled than your eggs.",
+	"Nope! That's not it, chief.",
+	"Nice try, but that's not the magic word.",
+	"Access denied! (Insert dramatic gasp here)",
+	"So close! Just kidding, not even close.",
+	"That passphrase is as wrong as pineapple on pizza.",
+	"Computer says no. Try again, human.",
+	"Error 401: Unauthorized. Also, wrong passphrase.",
+	"Plot twist: That's not your passphrase!",
+	"Wrong key, wrong door, wrong passphrase.",
+	"The passphrase you seek is not the one you speak.",
+	"Congratulations! You've found the wrong passphrase!",
+	"That passphrase is more scrambled than your eggs.",
 }
 
 var wrongPassphraseTips = []string{
 	"Maybe it's that one from your birthday?",
-	"Try the one with the cat's name.",
 	"Was it uppercase or lowercase?",
 	"Check if Caps Lock is on (classic mistake).",
 	"Remember: hunter2 is NOT a secure passphrase.",
@@ -114,29 +113,12 @@ func (m errorModel) View() string {
 		MarginTop(2).
 		Align(lipgloss.Center)
 
-	// ASCII art lock
-	lockArt := `
-    .-"-.
-   /  _  \
-  |  (_)  |
-  |        |
-  |  ____  |
-  | |____| |
-  |________|
-  |________|
-`
-
-	lockStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF5F5F"))
-
 	s.WriteString("\n")
-	s.WriteString(titleStyle.Render("⚠️  WRONG PASSPHRASE"))
+	s.WriteString(titleStyle.Render("WRONG PASSPHRASE"))
 	s.WriteString("\n\n")
-	s.WriteString(lockStyle.Render(lockArt))
-	s.WriteString("\n")
 	s.WriteString(messageStyle.Render(m.message))
 	s.WriteString("\n\n")
-	s.WriteString(tipStyle.Render("💡 " + m.tip))
+	s.WriteString(tipStyle.Render(m.tip))
 	s.WriteString("\n\n")
 
 	if m.countdown > 0 {
