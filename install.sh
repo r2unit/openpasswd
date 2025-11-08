@@ -105,9 +105,11 @@ get_latest_version() {
 download_binary() {
     TEMP_DIR=$(mktemp -d)
     echo -e "${COLOR_BLUE}Downloading ${PLATFORM_BINARY}...${COLOR_RESET}"
+    echo -e "${COLOR_BLUE}URL: ${DOWNLOAD_URL}${COLOR_RESET}"
     
     if ! curl -sSL -f "$DOWNLOAD_URL" -o "${TEMP_DIR}/${BINARY_NAME}"; then
         echo -e "${COLOR_YELLOW}⚠  Failed to download pre-built binary${COLOR_RESET}"
+        echo -e "${COLOR_YELLOW}   This usually means the binary for your platform hasn't been released yet${COLOR_RESET}"
         return 1
     fi
     
@@ -253,7 +255,7 @@ _openpass_completions()
             return 0
             ;;
         version)
-            COMPREPLY=( $(compgen -W "--verbose --check" -- ${cur}) )
+            COMPREPLY=( $(compgen -W "--verbose --check --disable-checking --enable-checking" -- ${cur}) )
             return 0
             ;;
     esac
@@ -313,6 +315,8 @@ _openpass() {
     version_flags=(
         '--verbose:Show detailed version information'
         '--check:Check for updates'
+        '--disable-checking:Disable automatic update checks'
+        '--enable-checking:Enable automatic update checks'
     )
 
     case $words[2] in
