@@ -573,10 +573,44 @@ func handleList() {
 	}
 	fmt.Println()
 
+	// Validate passphrase before showing TUI
+	if !validatePassphrase(db, cfg.Salt, passphrase) {
+		if err := tui.RunWrongPassphraseTUI(); err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError("Error: %v\n"), err)
+		}
+		os.Exit(1)
+	}
+
 	if err := tui.RunListTUI(db, cfg.Salt, passphrase); err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
 		os.Exit(1)
 	}
+}
+
+// validatePassphrase checks if the passphrase can decrypt the database
+func validatePassphrase(db *database.DB, salt []byte, passphrase string) bool {
+	passwords, err := db.ListPasswords()
+	if err != nil {
+		return false
+	}
+
+	// If database is empty, any passphrase is "valid" (no way to verify)
+	if len(passwords) == 0 {
+		return true
+	}
+
+	// Try to decrypt the first password's name
+	encryptor := crypto.NewEncryptor(passphrase, salt)
+	for _, p := range passwords {
+		if p.Name != "" {
+			_, err := encryptor.Decrypt(p.Name)
+			// If decryption succeeds, passphrase is correct
+			return err == nil
+		}
+	}
+
+	// If no encrypted fields found, assume passphrase is valid
+	return true
 }
 
 func handleSetTOTP() {
@@ -959,8 +993,19 @@ func handleUpgrade() {
 	}
 
 	fmt.Println()
+
+	// Show upgrade TUI
+	newVersion := release.TagName
+	if err := tui.RunUpgradeTUI(newVersion); err != nil {
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("TUI error: %v\n", err)))
+	}
+
+	// Actually perform the upgrade
 	if err := version.Upgrade(); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Upgrade failed: %v\n", err)))
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nUpgrade failed: %v\n", err)))
 		os.Exit(1)
 	}
+
+	fmt.Println(tui.ColorSuccess("\n✓ Upgrade completed successfully!"))
+	fmt.Println(tui.ColorInfo("Please restart openpasswd to use the new version."))
 }
