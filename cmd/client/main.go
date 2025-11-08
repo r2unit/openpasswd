@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/r2unit/openpasswd/pkg/config"
 	"github.com/r2unit/openpasswd/pkg/crypto"
@@ -36,6 +37,9 @@ func main() {
 		showHelp()
 		return
 	}
+
+	// Check for updates on startup (non-blocking, cached)
+	checkForUpdatesStartup()
 
 	// All other commands require initialization
 	if !isInitialized() {
@@ -237,15 +241,18 @@ EXAMPLES:
     openpasswd settings set-totp                # Enable TOTP authentication
     openpasswd settings set-yubikey             # Enable YubiKey authentication
     openpasswd version --verbose                # Show detailed version info
-    openpasswd version --check                  # Check for updates
+    openpasswd version --check                  # Check for updates (interactive)
+    openpasswd version --disable-checking       # Disable automatic update checks
+    openpasswd version --enable-checking        # Enable automatic update checks
     openpasswd upgrade                          # Upgrade to latest version
 
 CONFIGURATION:
-    ~/.config/openpasswd/passwords.db    Encrypted password database
-    ~/.config/openpasswd/salt            Encryption salt
-    ~/.config/openpasswd/passphrase      Master passphrase (optional)
-    ~/.config/openpasswd/totp_secret     TOTP secret (optional)
-    ~/.config/openpasswd/config.toml     Color configuration
+    ~/.config/openpasswd/passwords.db          Encrypted password database
+    ~/.config/openpasswd/salt                  Encryption salt
+    ~/.config/openpasswd/totp_secret           TOTP secret (optional)
+    ~/.config/openpasswd/config.toml           Color configuration
+    ~/.config/openpasswd/disable_version_check Flag to disable auto-update checks
+    ~/.cache/openpasswd/version_check.json     Cached version check (24hr TTL)
 
 For more information, visit: https://github.com/r2unit/openpasswd
 `
@@ -919,38 +926,131 @@ func handleMigrateUpgradeKDF() {
 	fmt.Println(tui.ColorInfo("  Your passwords are now 6x harder to crack!"))
 }
 
+// checkForUpdatesStartup performs a non-intrusive version check on startup
+func checkForUpdatesStartup() {
+	// Check if version checking is disabled
+	if config.IsVersionCheckDisabled() {
+		return
+	}
+
+	// Use cached version check (doesn't block on network)
+	latestVersion, updateAvailable, fromCache, err := version.CheckForUpdateCached()
+	if err != nil || !updateAvailable {
+		return // Silently fail or no update available
+	}
+
+	// Show non-intrusive banner
+	tui.RunVersionCheckBanner(version.Version, latestVersion)
+
+	// Add helpful hint
+	if fromCache {
+		// Don't show anything extra if from cache
+	}
+}
+
 // handleVersion displays version information
 func handleVersion() {
 	info := version.GetInfo()
 
-	// Display basic version
-	fmt.Printf("OpenPasswd v%s\n", info.Version)
+	// Check if user wants simple version output
+	hasFlag := len(os.Args) > 2
+
+	// Simple version output (no flags)
+	if !hasFlag {
+		fmt.Printf("OpenPasswd v%s\n", info.Version)
+		fmt.Printf("\nRun 'openpasswd version --check' to check for updates\n")
+		fmt.Printf("Run 'openpasswd version --verbose' for build information\n")
+		return
+	}
+
+	flag := os.Args[2]
 
 	// Check for --verbose flag
-	if len(os.Args) > 2 && (os.Args[2] == "--verbose" || os.Args[2] == "-v") {
+	if flag == "--verbose" || flag == "-v" {
+		fmt.Printf("OpenPasswd v%s\n", info.Version)
 		fmt.Printf("\nBuild Information:\n")
 		fmt.Printf("  Git Commit:  %s\n", info.GitCommit)
 		fmt.Printf("  Build Date:  %s\n", info.BuildDate)
 		fmt.Printf("  Go Version:  %s\n", info.GoVersion)
 		fmt.Printf("  Platform:    %s\n", info.Platform)
+		return
 	}
 
-	// Check for updates
-	if len(os.Args) > 2 && os.Args[2] == "--check" {
-		fmt.Println("\nChecking for updates...")
+	// Check for updates with interactive TUI
+	if flag == "--check" || flag == "-c" {
+		fmt.Println(tui.ColorInfo("Checking for updates..."))
+
 		release, updateAvailable, err := version.CheckForUpdate()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorWarning("Failed to check for updates: %v\n"), err)
+			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Failed to check for updates: %v\n", err)))
 			return
 		}
 
-		if updateAvailable && release != nil {
-			fmt.Printf(tui.ColorWarning("\n⚠  Update available: v%s (you have v%s)\n"), release.TagName, info.Version)
-			fmt.Printf(tui.ColorInfo("Run 'openpasswd upgrade' to update\n"))
-		} else {
-			fmt.Printf(tui.ColorSuccess("\n✓ You are running the latest version (v%s)\n"), info.Version)
+		// Prepare version info for TUI
+		versionInfo := tui.VersionInfo{
+			CurrentVersion:  info.Version,
+			LatestVersion:   info.Version,
+			UpdateAvailable: updateAvailable,
+			GitCommit:       info.GitCommit,
+			BuildDate:       info.BuildDate,
+			GoVersion:       info.GoVersion,
+			Platform:        info.Platform,
 		}
+
+		if release != nil {
+			versionInfo.LatestVersion = strings.TrimPrefix(release.TagName, "v")
+			versionInfo.ReleaseNotes = release.Body
+			versionInfo.ReleaseURL = release.HTMLURL
+		}
+
+		// Run interactive TUI
+		shouldUpgrade, err := tui.RunVersionTUI(versionInfo)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("TUI error: %v\n", err)))
+			return
+		}
+
+		if shouldUpgrade && updateAvailable {
+			fmt.Println()
+			handleUpgrade()
+		}
+		return
 	}
+
+	// Disable automatic version checking
+	if flag == "--disable-checking" {
+		if err := config.DisableVersionCheck(); err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Failed to disable version checking: %v\n", err)))
+			os.Exit(1)
+		}
+		fmt.Println(tui.ColorSuccess("✓ Automatic version checking disabled"))
+		fmt.Println(tui.ColorInfo("\nYou can still manually check for updates with:"))
+		fmt.Println(tui.ColorInfo("  openpasswd version --check"))
+		fmt.Println()
+		fmt.Println(tui.ColorInfo("To re-enable automatic checks, run:"))
+		fmt.Println(tui.ColorInfo("  openpasswd version --enable-checking"))
+		return
+	}
+
+	// Enable automatic version checking
+	if flag == "--enable-checking" {
+		if err := config.EnableVersionCheck(); err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Failed to enable version checking: %v\n", err)))
+			os.Exit(1)
+		}
+		fmt.Println(tui.ColorSuccess("✓ Automatic version checking enabled"))
+		fmt.Println(tui.ColorInfo("\nOpenPasswd will now check for updates on startup"))
+		fmt.Println(tui.ColorInfo("(Updates are checked at most once per 24 hours)"))
+		return
+	}
+
+	// Unknown flag
+	fmt.Printf("Unknown flag: %s\n", flag)
+	fmt.Printf("\nAvailable flags:\n")
+	fmt.Printf("  --check, -c           Check for updates (interactive)\n")
+	fmt.Printf("  --verbose, -v         Show detailed build information\n")
+	fmt.Printf("  --disable-checking    Disable automatic update checks\n")
+	fmt.Printf("  --enable-checking     Enable automatic update checks\n")
 }
 
 // handleUpgrade performs an automatic upgrade
