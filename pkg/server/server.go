@@ -1,8 +1,6 @@
 package server
 
-// TODO: Remote Server Package - Password sync server implementation
 // This package provides HTTP server functionality for syncing passwords across devices
-// Currently disabled - future feature for multi-device synchronization
 //
 // Planned features:
 // - End-to-end encryption with client-side keys

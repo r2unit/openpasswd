@@ -1,8 +1,6 @@
 package client
 
-// TODO: Remote Client Package - Client for syncing with remote server
 // This package provides HTTP client functionality for syncing with OpenPasswd server
-// Currently disabled - future feature for multi-device synchronization
 //
 // Planned features:
 // - RESTful API client with automatic retry logic

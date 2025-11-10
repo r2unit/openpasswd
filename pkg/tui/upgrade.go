@@ -221,7 +221,7 @@ func (m upgradeModel) View() string {
 		content.WriteString("\n")
 	}
 
-	// System info (nerdy details)
+	// System info
 	if m.stage == stageBeaming {
 		content.WriteString("\n")
 		content.WriteString(dimStyle.Render("Protocol: HTTPS/2 | TLS 1.3"))

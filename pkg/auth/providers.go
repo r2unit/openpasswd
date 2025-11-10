@@ -66,10 +66,8 @@ type CredentialField struct {
 type ProviderType string
 
 const (
-	// Currently supported providers
 	ProviderTypeProtonPass ProviderType = "protonpass" // File-based import only
 
-	// TODO: Future providers to implement (see pkg/sources/other_importers.go)
 	// ProviderTypeBitwarden  ProviderType = "bitwarden"  // OAuth + API
 	// ProviderType1Password  ProviderType = "1password"  // API token
 	// ProviderTypeLastPass   ProviderType = "lastpass"   // File-based only
@@ -88,7 +86,6 @@ var providers = make(map[ProviderType]Provider)
 //	    auth.RegisterProvider(auth.ProviderTypeProtonPass, &Provider{})
 //	}
 //
-// TODO: When adding new providers, they should follow this pattern
 func RegisterProvider(providerType ProviderType, provider Provider) {
 	providers[providerType] = provider
 }
@@ -104,9 +101,7 @@ func GetProvider(providerType ProviderType) Provider {
 // GetAllProviders returns all registered providers
 //
 // This is used by the auth login TUI to display available providers.
-// Currently only returns Proton Pass provider.
 //
-// TODO: As more providers are implemented and registered, they will
 // automatically appear in this list.
 func GetAllProviders() []Provider {
 	result := make([]Provider, 0, len(providers))

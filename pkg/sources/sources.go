@@ -9,10 +9,8 @@ import (
 type Source string
 
 const (
-	// Currently supported sources
 	SourceProtonPass Source = "protonpass"
 
-	// TODO: Future sources to implement (see other_importers.go for details)
 	// SourceBitwarden  Source = "bitwarden"  // Has public API with OAuth
 	// Source1Password  Source = "1password"  // Has CLI and Connect API
 	// SourceLastPass   Source = "lastpass"   // CSV export only
@@ -47,13 +45,10 @@ type Importer interface {
 
 // GetImporter returns an importer for the given source
 //
-// TODO: Add more sources as they are implemented
-// Currently only SourceProtonPass is supported
 func GetImporter(source Source) Importer {
 	switch source {
 	case SourceProtonPass:
 		return &pass.Importer{}
-	// TODO: Uncomment when implemented
 	// case SourceBitwarden:
 	//     return &BitwardenImporter{}
 	// case Source1Password:
@@ -70,11 +65,9 @@ func GetImporter(source Source) Importer {
 // GetAvailableImporters returns a list of all available importers
 //
 // This is used by the import TUI to display available password managers.
-// TODO: Add more importers as they are implemented
 func GetAvailableImporters() []Importer {
 	return []Importer{
 		&pass.Importer{}, // Proton Pass (via export files only)
-		// TODO: Add more importers here when implemented
 		// See other_importers.go for implementation notes
 	}
 }

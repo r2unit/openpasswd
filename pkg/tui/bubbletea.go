@@ -41,8 +41,7 @@ var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("#FFFFFF")).
-			MarginBottom(1)
-
+			MarginBottom(1).
 			MarginTop(1)
 
 	selectedStyle = lipgloss.NewStyle().
