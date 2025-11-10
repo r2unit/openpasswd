@@ -283,13 +283,11 @@ func handleImport() {
 	defer db.Close()
 
 	// Always prompt for passphrase (plaintext storage removed for security)
-	fmt.Print("Enter master passphrase (or press Enter for none): ")
-	passphrase, err := readPassword()
+	passphrase, err := promptPassword("Enter master passphrase", true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)
 	}
-	fmt.Println()
 
 	if err := tui.RunImportTUI(db, cfg.Salt, passphrase); err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
@@ -352,13 +350,11 @@ func handleAuthLogin() {
 	defer db.Close()
 
 	// Always prompt for passphrase (plaintext storage removed for security)
-	fmt.Print("Enter master passphrase (or press Enter for none): ")
-	passphrase, err := readPassword()
+	passphrase, err := promptPassword("Enter master passphrase", true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)
 	}
-	fmt.Println()
 
 	if err := tui.RunAuthLoginTUI(db, cfg.Salt, passphrase); err != nil {
 		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
@@ -572,16 +568,14 @@ func handleList() {
 	defer db.Close()
 
 	// Always prompt for passphrase (plaintext storage removed for security)
-	fmt.Print("Enter master passphrase (or press Enter for none): ")
-	passphrase, err := readPassword()
+	passphrase, err := promptPassword("Enter master passphrase", true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)
 	}
-	fmt.Println()
 
 	// Validate passphrase before showing TUI
-	if !validatePassphrase(db, cfg.Salt, passphrase) {
+	if !validatePassphrase(db, cfg.Salt, passphrase, cfg.KDFVersion) {
 		if err := tui.RunWrongPassphraseTUI(); err != nil {
 			fmt.Fprintf(os.Stderr, tui.ColorError("Error: %v\n"), err)
 		}
@@ -595,7 +589,7 @@ func handleList() {
 }
 
 // validatePassphrase checks if the passphrase can decrypt the database
-func validatePassphrase(db *database.DB, salt []byte, passphrase string) bool {
+func validatePassphrase(db *database.DB, salt []byte, passphrase string, kdfVersion int) bool {
 	passwords, err := db.ListPasswords()
 	if err != nil {
 		return false
@@ -606,8 +600,8 @@ func validatePassphrase(db *database.DB, salt []byte, passphrase string) bool {
 		return true
 	}
 
-	// Try to decrypt the first password's name
-	encryptor := crypto.NewEncryptor(passphrase, salt)
+	// Try to decrypt the first password's name using the correct KDF version
+	encryptor := crypto.NewEncryptorWithVersion(passphrase, salt, kdfVersion)
 	for _, p := range passwords {
 		if p.Name != "" {
 			_, err := encryptor.Decrypt(p.Name)
@@ -843,13 +837,11 @@ func handleMigrateUpgradeKDF() {
 		return
 	}
 
-	fmt.Print("Enter master passphrase: ")
-	passphrase, err := readPassword()
+	passphrase, err := promptPassword("Enter master passphrase", false)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError reading passphrase: %v\n", err)))
+		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)
 	}
-	fmt.Println()
 
 	// Test decryption with old KDF
 	oldEncryptor := crypto.NewEncryptorWithVersion(passphrase, cfg.Salt, cfg.KDFVersion)

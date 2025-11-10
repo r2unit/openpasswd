@@ -3,11 +3,25 @@ package tui
 import (
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 	"unsafe"
 )
 
+const (
+	termColorReset  = "\033[0m"
+	termColorGrey   = "\033[38;5;243m"
+	termColorOrange = "\033[38;5;214m"
+	termColorWhite  = "\033[38;5;255m"
+	termColorBold   = "\033[1m"
+)
+
 func readPassword() (string, error) {
+	return readPasswordWithBullets("", false)
+}
+
+// readPasswordWithBullets reads a password with visual feedback (bullets)
+func readPasswordWithBullets(prompt string, showBullets bool) (string, error) {
 	var oldState syscall.Termios
 	fd := int(os.Stdin.Fd())
 
@@ -41,15 +55,60 @@ func readPassword() (string, error) {
 			break
 		}
 
-		if buf[0] == 127 || buf[0] == 8 {
+		if buf[0] == 127 || buf[0] == 8 { // Backspace
 			if len(password) > 0 {
 				password = password[:len(password)-1]
+				if showBullets && prompt != "" {
+					// Clear the line and reprint
+					fmt.Print("\r")
+					fmt.Print(prompt)
+					fmt.Print(termColorGrey)
+					fmt.Print(strings.Repeat("•", len(password)))
+					fmt.Print(termColorReset)
+				}
 			}
 			continue
 		}
 
 		password = append(password, buf[0])
+		if showBullets {
+			// Print grey bullet
+			fmt.Print(termColorGrey)
+			fmt.Print("•")
+			fmt.Print(termColorReset)
+		}
 	}
 
 	return string(password), nil
+}
+
+// PromptPassword displays a styled password prompt with bullet feedback
+func PromptPassword(message string, optional bool) (string, error) {
+	// Build the prompt with styling
+	var prompt strings.Builder
+	prompt.WriteString(termColorOrange)
+	prompt.WriteString(termColorBold)
+	prompt.WriteString("→ ")
+	prompt.WriteString(termColorReset)
+	prompt.WriteString(termColorWhite)
+	prompt.WriteString(message)
+	if optional {
+		prompt.WriteString(" ")
+		prompt.WriteString(termColorGrey)
+		prompt.WriteString("(or press Enter for none)")
+		prompt.WriteString(termColorReset)
+	}
+	prompt.WriteString(termColorWhite)
+	prompt.WriteString(": ")
+	prompt.WriteString(termColorReset)
+
+	fmt.Print(prompt.String())
+
+	password, err := readPasswordWithBullets(prompt.String(), true)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println() // New line after password entry
+	return password, nil
 }

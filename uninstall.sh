@@ -8,26 +8,17 @@ INSTALL_DIR="/usr/local/bin"
 COMPLETION_DIR_BASH="/etc/bash_completion.d"
 COMPLETION_DIR_ZSH="/usr/local/share/zsh/site-functions"
 
-COLOR_GREEN='\033[0;32m'
-COLOR_BLUE='\033[0;34m'
-COLOR_YELLOW='\033[1;33m'
-COLOR_RED='\033[0;31m'
-COLOR_RESET='\033[0m'
-
-echo -e "${COLOR_BLUE}╔══════════════════════════════════════════════════════════════╗${COLOR_RESET}"
-echo -e "${COLOR_BLUE}║                                                              ║${COLOR_RESET}"
-echo -e "${COLOR_BLUE}║                OpenPasswd Uninstaller                        ║${COLOR_RESET}"
-echo -e "${COLOR_BLUE}║                                                              ║${COLOR_RESET}"
-echo -e "${COLOR_BLUE}╚══════════════════════════════════════════════════════════════╝${COLOR_RESET}"
+echo "OpenPasswd Uninstaller"
+echo "======================"
 echo ""
 
 if [ "$EUID" -ne 0 ]; then
-    echo -e "${COLOR_YELLOW}⚠  This script requires sudo privileges${COLOR_RESET}"
+    echo "Note: This script requires sudo privileges"
     echo ""
 fi
 
-echo -e "${COLOR_YELLOW}This will remove OpenPasswd from your system.${COLOR_RESET}"
-echo -e "${COLOR_YELLOW}Your password data in ~/.config/openpasswd will NOT be deleted.${COLOR_RESET}"
+echo "This will remove OpenPasswd from your system."
+echo "Your password data in ~/.config/openpasswd will NOT be deleted."
 echo ""
 read -p "Continue? (yes/no): " confirm
 
@@ -37,71 +28,58 @@ if [ "$confirm" != "yes" ]; then
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[1/4]${COLOR_RESET} Removing binaries..."
+echo "[1/4] Removing binaries..."
 if [ -f "$INSTALL_DIR/$CLIENT_BINARY" ]; then
     sudo rm -f "$INSTALL_DIR/$CLIENT_BINARY"
-    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/$CLIENT_BINARY${COLOR_RESET}"
+    echo "Removed $INSTALL_DIR/$CLIENT_BINARY"
 else
-    echo -e "${COLOR_YELLOW}⚠  Client binary not found${COLOR_RESET}"
+    echo "Client binary not found"
 fi
 
 if [ -f "$INSTALL_DIR/$SERVER_BINARY" ]; then
     sudo rm -f "$INSTALL_DIR/$SERVER_BINARY"
-    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/$SERVER_BINARY${COLOR_RESET}"
+    echo "Removed $INSTALL_DIR/$SERVER_BINARY"
 else
-    echo -e "${COLOR_YELLOW}⚠  Server binary not found${COLOR_RESET}"
+    echo "Server binary not found"
 fi
 
+echo ""
+echo "[2/4] Removing aliases..."
 if [ -L "$INSTALL_DIR/openpass" ]; then
     sudo rm -f "$INSTALL_DIR/openpass"
-    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/openpass${COLOR_RESET}"
+    echo "Removed $INSTALL_DIR/openpass"
 fi
 
 if [ -L "$INSTALL_DIR/pw" ]; then
     sudo rm -f "$INSTALL_DIR/pw"
-    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/pw${COLOR_RESET}"
+    echo "Removed $INSTALL_DIR/pw"
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[2/4]${COLOR_RESET} Removing aliases..."
-if [ -L "$INSTALL_DIR/openpass" ]; then
-    sudo rm -f "$INSTALL_DIR/openpass"
-    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/openpass${COLOR_RESET}"
-fi
-
-if [ -L "$INSTALL_DIR/pw" ]; then
-    sudo rm -f "$INSTALL_DIR/pw"
-    echo -e "${COLOR_GREEN}✓ Removed $INSTALL_DIR/pw${COLOR_RESET}"
-fi
-
-echo ""
-echo -e "${COLOR_BLUE}[3/4]${COLOR_RESET} Removing bash completion..."
+echo "[3/4] Removing bash completion..."
 if [ -f "$COMPLETION_DIR_BASH/openpass" ]; then
     sudo rm -f "$COMPLETION_DIR_BASH/openpass"
-    echo -e "${COLOR_GREEN}✓ Removed bash completion${COLOR_RESET}"
+    echo "Removed bash completion"
 else
-    echo -e "${COLOR_YELLOW}⚠  Bash completion not found${COLOR_RESET}"
+    echo "Bash completion not found"
 fi
 
 echo ""
-echo -e "${COLOR_BLUE}[4/4]${COLOR_RESET} Removing zsh completion..."
+echo "[4/4] Removing zsh completion..."
 if [ -f "$COMPLETION_DIR_ZSH/_openpass" ]; then
     sudo rm -f "$COMPLETION_DIR_ZSH/_openpass"
-    echo -e "${COLOR_GREEN}✓ Removed zsh completion${COLOR_RESET}"
+    echo "Removed zsh completion"
 else
-    echo -e "${COLOR_YELLOW}⚠  Zsh completion not found${COLOR_RESET}"
+    echo "Zsh completion not found"
 fi
 
 echo ""
-echo -e "${COLOR_GREEN}╔══════════════════════════════════════════════════════════════╗${COLOR_RESET}"
-echo -e "${COLOR_GREEN}║                                                              ║${COLOR_RESET}"
-echo -e "${COLOR_GREEN}║              OpenPasswd Uninstalled Successfully             ║${COLOR_RESET}"
-echo -e "${COLOR_GREEN}║                                                              ║${COLOR_RESET}"
-echo -e "${COLOR_GREEN}╚══════════════════════════════════════════════════════════════╝${COLOR_RESET}"
+echo "OpenPasswd Uninstalled Successfully"
+echo "==================================="
 echo ""
-echo -e "${COLOR_BLUE}Your password data is preserved in:${COLOR_RESET}"
-echo -e "  ${COLOR_GREEN}~/.config/openpasswd/${COLOR_RESET}"
+echo "Your password data is preserved in:"
+echo "  ~/.config/openpasswd/"
 echo ""
-echo -e "${COLOR_YELLOW}To completely remove all data:${COLOR_RESET}"
-echo -e "  ${COLOR_RED}rm -rf ~/.config/openpasswd${COLOR_RESET}"
+echo "To completely remove all data:"
+echo "  rm -rf ~/.config/openpasswd"
 echo ""

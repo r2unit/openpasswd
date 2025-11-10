@@ -66,13 +66,7 @@ func (a *App) Run() error {
 }
 
 func (a *App) getPassphrase() (string, error) {
-	fmt.Print("Enter master passphrase: ")
-	password, err := readPassword()
-	if err != nil {
-		return "", err
-	}
-	fmt.Println()
-	return password, nil
+	return PromptPassword("Enter master passphrase", false)
 }
 
 func (a *App) showMenu() {
@@ -94,13 +88,9 @@ func (a *App) readInput(prompt string) string {
 }
 
 func (a *App) readPassword(prompt string) (string, error) {
-	fmt.Print(prompt)
-	password, err := readPassword()
-	if err != nil {
-		return "", err
-	}
-	fmt.Println()
-	return password, nil
+	// Remove trailing colon and space if present
+	prompt = strings.TrimSuffix(strings.TrimSpace(prompt), ":")
+	return PromptPassword(prompt, false)
 }
 
 func (a *App) listPasswords() {
