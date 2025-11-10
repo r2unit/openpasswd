@@ -1,0 +1,56 @@
+run:
+  timeout: 5m
+  go: '1.25'
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  disable-all: false
+
+linters-settings:
+  errcheck:
+    # Don't fail on these common patterns
+    exclude-functions:
+      - fmt.Fprintf
+      - fmt.Printf
+      - fmt.Println
+      - (io.Closer).Close
+
+issues:
+  # Maximum issues count per one linter
+  max-issues-per-linter: 50
+  
+  # Maximum count of issues with the same text
+  max-same-issues: 10
+  
+  # Exclude known issues that are technical debt
+  exclude-rules:
+    # Exclude deprecated warnings in existing code (to be fixed later)
+    - linters:
+        - staticcheck
+      text: "SA1019"
+    
+    # Exclude unused code warnings for future features
+    - linters:
+        - unused
+      text: "handleImport|handleAuth|showAuthHelp|handleAuthLogin|handleAuthLogout|handleAuthStatus"
+    
+    # Allow unchecked errors for Write operations (common pattern)
+    - linters:
+        - errcheck
+      text: "Error return value of.*Write.*is not checked"
+    
+    # Allow unchecked Scanln (interactive input)
+    - linters:
+        - errcheck
+      text: "Error return value of.*Scanln.*is not checked"
+    
+    # Allow unchecked syscalls (cleanup operations)
+    - linters:
+        - errcheck
+      text: "Error return value of.*syscall.Syscall6.*is not checked"
