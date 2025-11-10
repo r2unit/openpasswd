@@ -263,37 +263,6 @@ For more information, visit: https://github.com/r2unit/openpasswd
 // This function will allow importing passwords from export files of various password managers
 // Planned support: Bitwarden, 1Password, LastPass, KeePass, etc.
 // Currently disabled - implementation pending
-func handleImport() {
-	// DISABLED: Import functionality is not yet implemented
-	// Will support reading various export formats (CSV, JSON, XML)
-	// and converting them to the OpenPasswd encrypted format
-
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		fmt.Println("\nRun 'openpass init' to initialize the password manager")
-		os.Exit(1)
-	}
-
-	db, err := database.New(cfg.DatabasePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening database: %v\n", err)
-		os.Exit(1)
-	}
-	defer db.Close()
-
-	// Always prompt for passphrase (plaintext storage removed for security)
-	passphrase, err := promptPassword("Enter master passphrase", true)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
-		os.Exit(1)
-	}
-
-	if err := tui.RunImportTUI(db, cfg.Salt, passphrase); err != nil {
-		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
-		os.Exit(1)
-	}
-}
 
 // TODO: handleAuth - Authentication with external password providers
 // This function will handle OAuth/API authentication with providers like:
@@ -301,117 +270,17 @@ func handleImport() {
 // - Bitwarden (self-hosted or cloud)
 // - 1Password (via CLI integration)
 // Currently disabled - implementation pending
-func handleAuth() {
-	// DISABLED: Auth functionality is not yet implemented
-	// Will require OAuth2 flows and secure token storage
-	// Consider using system keychain for storing provider tokens
-
-	if len(os.Args) < 3 {
-		showAuthHelp()
-		return
-	}
-
-	subcommand := os.Args[2]
-
-	switch subcommand {
-	case "login":
-		handleAuthLogin()
-	case "logout":
-		handleAuthLogout()
-	case "status":
-		handleAuthStatus()
-	case "help", "--help", "-h":
-		showAuthHelp()
-	default:
-		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Unknown auth command: %s\n", subcommand)))
-		showAuthHelp()
-		os.Exit(1)
-	}
-}
 
 // TODO: handleAuthLogin - Login to external password provider
 // Will implement OAuth2 flow or API key authentication
 // Should securely store access tokens using system keychain
-func handleAuthLogin() {
-	// DISABLED: Not yet implemented
-
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		fmt.Println("\nRun 'openpasswd init' to initialize the password manager")
-		os.Exit(1)
-	}
-
-	db, err := database.New(cfg.DatabasePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening database: %v\n", err)
-		os.Exit(1)
-	}
-	defer db.Close()
-
-	// Always prompt for passphrase (plaintext storage removed for security)
-	passphrase, err := promptPassword("Enter master passphrase", true)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
-		os.Exit(1)
-	}
-
-	if err := tui.RunAuthLoginTUI(db, cfg.Salt, passphrase); err != nil {
-		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
-		os.Exit(1)
-	}
-}
 
 // TODO: handleAuthLogout - Logout from external password provider
 // Will revoke access tokens and clear stored credentials
-func handleAuthLogout() {
-	// DISABLED: Not yet implemented
-	fmt.Println(tui.ColorInfo("Auth logout functionality coming soon"))
-	fmt.Println(tui.ColorInfo("For now, passwords are synced locally only"))
-}
 
 // TODO: handleAuthStatus - Check authentication status with providers
 // Will display connected providers and sync status
-func handleAuthStatus() {
-	// DISABLED: Not yet implemented
-	fmt.Println(tui.ColorInfo("Auth status functionality coming soon"))
-	fmt.Println(tui.ColorInfo("For now, use 'openpasswd list' to see your synced passwords"))
-}
 
-func showAuthHelp() {
-	help := `OpenPasswd - Auth Command
-
-COMMANDS:
-    openpasswd auth login         Connect to a password provider and sync passwords
-    openpasswd auth logout        Disconnect from provider (coming soon)
-    openpasswd auth status        Show current auth status (coming soon)
-    openpasswd auth help          Show this help message
-
-DESCRIPTION:
-    The auth command allows you to connect to external password providers
-    and sync your passwords to openpasswd. Currently supported providers:
-    
-    - Proton Pass (via export file)
-    
-    More providers coming soon:
-    - Bitwarden
-    - 1Password
-    - LastPass
-
-EXAMPLES:
-    openpasswd auth login         # Show list of available providers
-    openpasswd auth status        # Check connection status
-    openpasswd auth logout        # Disconnect from provider
-
-WORKFLOW:
-    1. Export your passwords from your current password manager
-    2. Run 'openpasswd auth login'
-    3. Select your provider from the list
-    4. Enter required credentials (usually export file path)
-    5. Your passwords will be synced and encrypted locally
-`
-	fmt.Println(help)
-}
 
 func handleAdd() {
 	if len(os.Args) >= 3 && (os.Args[2] == "help" || os.Args[2] == "--help" || os.Args[2] == "-h") {
@@ -485,13 +354,6 @@ OPTIONAL:
 	fmt.Println(help)
 }
 
-func readPassword() (string, error) {
-	password, err := readPasswordFromTerminal()
-	if err != nil {
-		return "", err
-	}
-	return password, nil
-}
 
 func handleSettings() {
 	if len(os.Args) >= 3 && (os.Args[2] == "help" || os.Args[2] == "--help" || os.Args[2] == "-h") {

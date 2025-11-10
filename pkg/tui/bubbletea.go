@@ -31,7 +31,6 @@ type model struct {
 	cursor       int
 	passwords    []*models.Password
 	selectedPass *models.Password
-	input        string
 	commandInput string
 	err          error
 	message      string
@@ -44,10 +43,6 @@ var (
 			Foreground(lipgloss.Color("#FFFFFF")).
 			MarginBottom(1)
 
-	menuStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#585858")).
-			Padding(1, 2).
 			MarginTop(1)
 
 	selectedStyle = lipgloss.NewStyle().

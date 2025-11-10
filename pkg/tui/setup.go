@@ -20,7 +20,6 @@ type SetupModel struct {
 	passphrase        string
 	passphraseConfirm string
 	recoveryKey       string
-	cursor            int
 	width             int
 	height            int
 	err               string
