@@ -419,7 +419,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.version.outputs.new_version }}
-          name: OpenPasswd v${{ needs.version.outputs.new_version }}
+          name: v${{ needs.version.outputs.new_version }}
           body_path: release_notes.md
           draft: false
           prerelease: false
