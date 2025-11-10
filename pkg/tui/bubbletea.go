@@ -290,10 +290,12 @@ func (m model) renderList() string {
 
 	for i, p := range m.passwords {
 		cursor := " "
+		if m.cursor == i {
+			cursor = ">"
+		}
 		line := fmt.Sprintf("%s [%d] %s (%s)", cursor, p.ID, p.Name, p.Username)
 
 		if m.cursor == i {
-			cursor = ">"
 			s.WriteString(selectedStyle.Render(line))
 		} else {
 			s.WriteString(normalStyle.Render(line))

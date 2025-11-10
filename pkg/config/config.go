@@ -189,7 +189,9 @@ func LoadKDFVersion() (int, error) {
 	}
 
 	var version int
-	fmt.Sscanf(string(data), "%d", &version)
+	if _, err := fmt.Sscanf(string(data), "%d", &version); err != nil {
+		return 1, nil // Default to v1 if parsing fails
+	}
 
 	// Validate version
 	if version < 1 || version > 3 {

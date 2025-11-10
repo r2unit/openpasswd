@@ -207,12 +207,12 @@ func (s *QRServer) Start(secret, accountName, issuer string) (string, error) {
 </body>
 </html>`, secret, accountName, issuer)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(html))
+		_, _ = w.Write([]byte(html))
 	})
 
 	mux.HandleFunc("/qr.png", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
-		w.Write(qrPNG)
+		_, _ = w.Write(qrPNG)
 	})
 
 	s.server = &http.Server{
@@ -220,7 +220,7 @@ func (s *QRServer) Start(secret, accountName, issuer string) (string, error) {
 	}
 
 	go func() {
-		s.server.Serve(listener)
+		_ = s.server.Serve(listener)
 	}()
 
 	url := fmt.Sprintf("http://127.0.0.1:%d", s.port)

@@ -270,7 +270,6 @@ For more information, visit: https://github.com/r2unit/openpasswd
 
 // Will display connected providers and sync status
 
-
 func handleAdd() {
 	if len(os.Args) >= 3 && (os.Args[2] == "help" || os.Args[2] == "--help" || os.Args[2] == "-h") {
 		showAddHelp()
@@ -342,7 +341,6 @@ OPTIONAL:
 `
 	fmt.Println(help)
 }
-
 
 func handleSettings() {
 	if len(os.Args) >= 3 && (os.Args[2] == "help" || os.Args[2] == "--help" || os.Args[2] == "-h") {
@@ -777,18 +775,13 @@ func checkForUpdatesStartup() {
 	}
 
 	// Use cached version check (doesn't block on network)
-	latestVersion, updateAvailable, fromCache, err := version.CheckForUpdateCached()
+	latestVersion, updateAvailable, _, err := version.CheckForUpdateCached()
 	if err != nil || !updateAvailable {
 		return // Silently fail or no update available
 	}
 
 	// Show non-intrusive banner
 	tui.RunVersionCheckBanner(version.Version, latestVersion)
-
-	// Add helpful hint
-	if fromCache {
-		// Don't show anything extra if from cache
-	}
 }
 
 // handleVersion displays version information

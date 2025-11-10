@@ -53,11 +53,6 @@ var (
 	totpSuccessStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#00D75F")).
 				Bold(true)
-
-	totpQRStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFFFF")).
-			Background(lipgloss.Color("#000000")).
-			Padding(1)
 )
 
 func NewTOTPSetupTUI(accountName string) *totpModel {
@@ -331,7 +326,7 @@ func RunTOTPSetupTUI(accountName string) error {
 	m := model.(totpModel)
 
 	if m.qrServer != nil {
-		m.qrServer.Stop()
+		_ = m.qrServer.Stop() // Ignore error on cleanup
 	}
 
 	if m.success {
