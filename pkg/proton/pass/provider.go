@@ -27,7 +27,6 @@ import (
 // This is NOT a live sync - it's a one-time import from export files.
 // This is the only officially supported method from Proton.
 //
-// TODO: If Proton releases a public API in the future, we could implement
 // live sync here. Monitor: https://github.com/ProtonMail/go-proton-api
 type Provider struct {
 	importer      *Importer // Handles parsing export files

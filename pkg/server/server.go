@@ -1,8 +1,6 @@
 package server
 
-// TODO: Remote Server Package - Password sync server implementation
 // This package provides HTTP server functionality for syncing passwords across devices
-// Currently disabled - future feature for multi-device synchronization
 //
 // Planned features:
 // - End-to-end encryption with client-side keys
@@ -94,7 +92,7 @@ func (s *Server) authenticate(r *http.Request) (*auth.Session, error) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -156,7 +154,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("New session created, expires at %s", expiresAt.Format(time.RFC3339))
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"token":      token,
 		"expires_at": expiresAt,
 	})
@@ -180,7 +178,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "logged out"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "logged out"})
 }
 
 func (s *Server) handlePasswords(w http.ResponseWriter, r *http.Request) {
@@ -209,7 +207,7 @@ func (s *Server) handlePasswords(w http.ResponseWriter, r *http.Request) {
 			p.Password = decrypted
 		}
 
-		json.NewEncoder(w).Encode(passwords)
+		_ = json.NewEncoder(w).Encode(passwords)
 
 	case http.MethodPost:
 		var p models.Password
@@ -231,7 +229,7 @@ func (s *Server) handlePasswords(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(p)
+		_ = json.NewEncoder(w).Encode(p)
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -248,7 +246,10 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 	encryptor := crypto.NewEncryptor(session.Passphrase, s.salt)
 
 	var id int64
-	fmt.Sscanf(r.URL.Path, "/api/passwords/%d", &id)
+	if _, err := fmt.Sscanf(r.URL.Path, "/api/passwords/%d", &id); err != nil {
+		http.Error(w, "Invalid password ID", http.StatusBadRequest)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
@@ -265,7 +266,7 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 		}
 		p.Password = decrypted
 
-		json.NewEncoder(w).Encode(p)
+		_ = json.NewEncoder(w).Encode(p)
 
 	case http.MethodPut:
 		var p models.Password
@@ -287,7 +288,7 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		json.NewEncoder(w).Encode(p)
+		_ = json.NewEncoder(w).Encode(p)
 
 	case http.MethodDelete:
 		if err := s.db.DeletePassword(id); err != nil {
@@ -337,5 +338,5 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		p.Password = decrypted
 	}
 
-	json.NewEncoder(w).Encode(passwords)
+	_ = json.NewEncoder(w).Encode(passwords)
 }

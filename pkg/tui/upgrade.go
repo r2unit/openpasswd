@@ -107,7 +107,7 @@ func (m upgradeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case m.progress < 95:
 			m.stage = stageInstalling
 			m.message = "Installing new binary..."
-			m.details = fmt.Sprintf("chmod +x openpasswd && mv -f")
+			m.details = "chmod +x openpasswd && mv -f"
 		case m.progress >= 100:
 			m.stage = stageComplete
 			m.message = "Upgrade complete!"
@@ -221,10 +221,10 @@ func (m upgradeModel) View() string {
 		content.WriteString("\n")
 	}
 
-	// System info (nerdy details)
+	// System info
 	if m.stage == stageBeaming {
 		content.WriteString("\n")
-		content.WriteString(dimStyle.Render(fmt.Sprintf("Protocol: HTTPS/2 | TLS 1.3")))
+		content.WriteString(dimStyle.Render("Protocol: HTTPS/2 | TLS 1.3"))
 		content.WriteString("\n")
 		content.WriteString(dimStyle.Render(fmt.Sprintf("Packets: %d | Latency: %.1fms", m.progress*10, float64(m.progress)/5+10)))
 	}

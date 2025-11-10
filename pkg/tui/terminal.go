@@ -16,9 +16,6 @@ const (
 	termColorBold   = "\033[1m"
 )
 
-func readPassword() (string, error) {
-	return readPasswordWithBullets("", false)
-}
 
 // readPasswordWithBullets reads a password with visual feedback (bullets)
 func readPasswordWithBullets(prompt string, showBullets bool) (string, error) {

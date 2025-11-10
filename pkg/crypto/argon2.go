@@ -221,7 +221,7 @@ func argon2FillSegment(memory []block, pass uint32, lane uint8, slice uint32, pa
 
 // argon2IndexAlpha computes reference block indices
 func argon2IndexAlpha(pass uint32, lane uint8, slice, index, laneLength, segmentLength uint32, lanes uint8, pseudoRand1, pseudoRand2 uint64) (uint32, uint32) {
-	refLane := uint32(lane)
+	var refLane uint32
 
 	if pass == 0 && slice == 0 {
 		refLane = uint32(lane)

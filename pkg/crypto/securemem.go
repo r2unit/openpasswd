@@ -217,7 +217,7 @@ func WipeMemory(data []byte) {
 	}
 
 	// Overwrite with random data
-	rand.Read(data)
+	_, _ = rand.Read(data) // Ignore error as this is best-effort wiping
 
 	// Overwrite with zeros
 	for i := range data {

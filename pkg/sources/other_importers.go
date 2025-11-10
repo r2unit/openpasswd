@@ -1,8 +1,6 @@
 package sources
 
-// TODO: Future password manager integrations
 // This file is reserved for implementing additional password manager importers.
-// Currently disabled - only Proton Pass is supported via export files.
 
 // Potential future integrations:
 // 1. Bitwarden - Has public API: https://bitwarden.com/help/public-api/

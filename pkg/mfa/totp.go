@@ -78,17 +78,6 @@ func GenerateQRCodeASCII(key *TOTPKey) (string, error) {
 	return "", nil
 }
 
-func wrapText(text string, width int) []string {
-	var lines []string
-	for len(text) > width {
-		lines = append(lines, text[:width])
-		text = text[width:]
-	}
-	if len(text) > 0 {
-		lines = append(lines, text)
-	}
-	return lines
-}
 
 func GetTOTPCode() (string, error) {
 	fmt.Print("Enter 6-digit TOTP code: ")

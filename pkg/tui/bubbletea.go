@@ -31,7 +31,6 @@ type model struct {
 	cursor       int
 	passwords    []*models.Password
 	selectedPass *models.Password
-	input        string
 	commandInput string
 	err          error
 	message      string
@@ -42,12 +41,7 @@ var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("#FFFFFF")).
-			MarginBottom(1)
-
-	menuStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#585858")).
-			Padding(1, 2).
+			MarginBottom(1).
 			MarginTop(1)
 
 	selectedStyle = lipgloss.NewStyle().
@@ -296,10 +290,12 @@ func (m model) renderList() string {
 
 	for i, p := range m.passwords {
 		cursor := " "
+		if m.cursor == i {
+			cursor = ">"
+		}
 		line := fmt.Sprintf("%s [%d] %s (%s)", cursor, p.ID, p.Name, p.Username)
 
 		if m.cursor == i {
-			cursor = ">"
 			s.WriteString(selectedStyle.Render(line))
 		} else {
 			s.WriteString(normalStyle.Render(line))

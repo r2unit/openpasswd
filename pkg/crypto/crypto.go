@@ -16,7 +16,6 @@ const (
 	saltSize = 32
 	keySize  = 32
 	// Legacy iteration count (deprecated)
-	iterationsLegacy = 100000
 	// Current iteration count (OWASP recommended)
 	iterationsCurrent = 600000
 )

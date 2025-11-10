@@ -58,16 +58,6 @@ func galoisMultiply(a, b int) int {
 	return galoisExp[(galoisLog[a]+galoisLog[b])%255]
 }
 
-func galoisDivide(a, b int) int {
-	if a == 0 {
-		return 0
-	}
-	if b == 0 {
-		panic("division by zero")
-	}
-	return galoisExp[(galoisLog[a]-galoisLog[b]+255)%255]
-}
-
 func Encode(data string, level int) (*QRCode, error) {
 	version := calculateVersion(len(data))
 	size := version*4 + 17
@@ -303,9 +293,7 @@ func addErrorCorrection(data []byte, version, level int) []byte {
 	}
 
 	result := make([]byte, len(data)+ecCount)
-	for i, b := range data {
-		result[i] = b
-	}
+	copy(result, data)
 	for i := 0; i < ecCount; i++ {
 		result[len(data)+i] = byte(dataExtended[len(data)+i])
 	}

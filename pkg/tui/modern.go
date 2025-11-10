@@ -25,7 +25,6 @@ type modernModel struct {
 	cursor            int
 	width             int
 	height            int
-	err               error
 	showDetails       bool
 	selectedPass      *models.Password
 	colors            *config.ColorScheme
