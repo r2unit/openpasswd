@@ -1,6 +1,6 @@
 //go:build linux
 
-package tui
+package main
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 // readPasswordWithBullets reads a password with visual feedback (bullets)
-func readPasswordWithBullets(prompt string, showBullets bool) (string, error) {
+func readPasswordWithBullets(prompt string) (string, error) {
 	var oldState syscall.Termios
 	fd := int(os.Stdin.Fd())
 
@@ -48,25 +48,21 @@ func readPasswordWithBullets(prompt string, showBullets bool) (string, error) {
 		if buf[0] == 127 || buf[0] == 8 { // Backspace
 			if len(password) > 0 {
 				password = password[:len(password)-1]
-				if showBullets && prompt != "" {
-					// Clear the line and reprint
-					fmt.Print("\r")
-					fmt.Print(prompt)
-					fmt.Print(termColorGrey)
-					fmt.Print(strings.Repeat("•", len(password)))
-					fmt.Print(termColorReset)
-				}
+				// Clear the line and reprint
+				fmt.Print("\r")
+				fmt.Print(prompt)
+				fmt.Print(colorGrey)
+				fmt.Print(strings.Repeat("•", len(password)))
+				fmt.Print(colorReset)
 			}
 			continue
 		}
 
 		password = append(password, buf[0])
-		if showBullets {
-			// Print grey bullet
-			fmt.Print(termColorGrey)
-			fmt.Print("•")
-			fmt.Print(termColorReset)
-		}
+		// Print grey bullet
+		fmt.Print(colorGrey)
+		fmt.Print("•")
+		fmt.Print(colorReset)
 	}
 
 	return string(password), nil

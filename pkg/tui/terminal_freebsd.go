@@ -1,4 +1,4 @@
-//go:build linux
+//go:build freebsd
 
 package tui
 
@@ -10,12 +10,19 @@ import (
 	"unsafe"
 )
 
+const (
+	// FreeBSD terminal ioctls
+	TIOCGETA = 0x402c7413
+	TIOCSETA = 0x802c7414
+)
+
 // readPasswordWithBullets reads a password with visual feedback (bullets)
 func readPasswordWithBullets(prompt string, showBullets bool) (string, error) {
 	var oldState syscall.Termios
 	fd := int(os.Stdin.Fd())
 
-	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), syscall.TCGETS, uintptr(unsafe.Pointer(&oldState)), 0, 0, 0); err != 0 {
+	// Get terminal state using FreeBSD TIOCGETA
+	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), TIOCGETA, uintptr(unsafe.Pointer(&oldState)), 0, 0, 0); err != 0 {
 		return "", fmt.Errorf("failed to get terminal state: %v", err)
 	}
 
@@ -24,12 +31,13 @@ func readPasswordWithBullets(prompt string, showBullets bool) (string, error) {
 	newState.Lflag |= syscall.ICANON | syscall.ISIG
 	newState.Iflag |= syscall.ICRNL
 
-	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), syscall.TCSETS, uintptr(unsafe.Pointer(&newState)), 0, 0, 0); err != 0 {
+	// Set terminal state using FreeBSD TIOCSETA
+	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), TIOCSETA, uintptr(unsafe.Pointer(&newState)), 0, 0, 0); err != 0 {
 		return "", fmt.Errorf("failed to set terminal state: %v", err)
 	}
 
 	defer func() {
-		syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), syscall.TCSETS, uintptr(unsafe.Pointer(&oldState)), 0, 0, 0)
+		syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), TIOCSETA, uintptr(unsafe.Pointer(&oldState)), 0, 0, 0)
 	}()
 
 	var buf [1]byte
