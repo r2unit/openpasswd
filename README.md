@@ -1,48 +1,35 @@
 # OpenPasswd
 
-A secure, terminal-based password manager built with Go. Store and manage your passwords locally with end-to-end encryption.
+> A password manager built for the Terminal
+
+[![CI/CD Pipeline](https://github.com/r2unit/openpasswd/actions/workflows/ci.yml/badge.svg)](https://github.com/r2unit/openpasswd/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/r2unit/openpasswd)](https://github.com/r2unit/openpasswd/releases/latest)
 
 > [!WARNING]
-> Openpasswd is still under development and currently in a pre‑alpha phase. Do not use it in production.
+> OpenPasswd is still under development and currently in a pre-alpha phase. Do not use it in production.
 
 ## Installation
 
-### Quick Install
-
-Install directly from GitHub using curl:
+### Quick Install (Recommended)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/master/install.sh | bash
 ```
 
-This will:
-- Clone the repository automatically
-- Build the binary
-- Install to `/usr/local/bin`
-- Create convenient aliases (`openpass` and `pw`)
-- Set up shell completions for bash and zsh
+This will automatically download, build, and install OpenPasswd with shell completions.
 
-### Using Install Scripts
+### Download Pre-built Binaries
 
-```bash
-# Clone the repository
-git clone https://github.com/r2unit/openpasswd.git
-cd openpasswd
+Download the latest release for your platform from the [releases page](https://github.com/r2unit/openpasswd/releases/latest).
 
-# Run install script
-./install.sh
-```
-
-### Manual Installation
+### Build from Source
 
 ```bash
-# Clone and build
 git clone https://github.com/r2unit/openpasswd.git
 cd openpasswd
-go build -o openpasswd ./cmd/openpasswd
-
-# Move to your PATH (optional)
-sudo mv openpasswd /usr/local/bin/
+make install
 ```
 
 ## Quick Start
@@ -57,18 +44,11 @@ openpasswd add
 # List passwords
 openpasswd list
 
-# Configure settings (MFA, passphrase, etc.)
+# Configure MFA
 openpasswd settings set-totp
-openpasswd settings set-passphrase
-
-# Check version and updates
-openpasswd version --check
-
-# Upgrade to latest version
-openpasswd upgrade
 ```
 
-## Usage
+## Documentation
 
 ### Commands
 
@@ -78,94 +58,89 @@ openpasswd upgrade
 - `openpasswd settings` - Manage settings (passphrase, MFA, etc.)
 - `openpasswd version` - Show version information
 - `openpasswd upgrade` - Upgrade to the latest version
-- `openpasswd help` - Show help message
 
-### Version Commands
-
-```bash
-openpasswd version              # Show version number
-openpasswd version --verbose    # Show detailed build information
-openpasswd version --check      # Check for updates
-openpasswd upgrade              # Upgrade to latest version
-```
-
-## Supported Password Types
-
-OpenPasswd stores all your credentials locally with AES-256-GCM encryption:
+### Supported Password Types
 
 - **Login Credentials** - Username, password, URL, notes
 - **Credit Cards** - Number, cardholder, expiry, CVV
 - **Secure Notes** - Encrypted text notes
 - **Identity Information** - Personal details
-- **Generic Passwords** - Simple password storage
 - **Custom Fields** - Additional encrypted key-value pairs
 
-All password types support:
-- TOTP/2FA codes (coming soon)
-- Custom metadata fields
-- Timestamps (created/updated)
-- Search and filtering
-
-## MFA Support
-
-OpenPasswd supports multiple authentication methods:
+### MFA Support
 
 - **Master Passphrase** - Simple password protection
 - **TOTP (Time-based OTP)** - Google Authenticator, Authy, etc.
-- **YubiKey** - Hardware key authentication
+- **YubiKey** - Hardware key authentication (coming soon)
 
 Configure MFA:
 ```bash
 openpasswd settings set-passphrase  # Set master passphrase
 openpasswd settings set-totp         # Enable TOTP
-openpasswd settings set-yubikey      # Enable YubiKey
 ```
 
-## Development
+### Security
 
-### Building from Source
+- **AES-256-GCM encryption** for all stored data
+- **Argon2id** for key derivation
+- **BLAKE2b** for integrity verification
+- **Local storage only** - your data never leaves your device
+- **Zero-knowledge architecture** - no cloud sync, no telemetry
 
-Using Make (recommended):
-```bash
-make build          # Build with version information
-make install        # Build and install to /usr/local/bin
-make version        # Show version info
-make clean          # Clean build artifacts
-```
-
-Using Go directly:
-```bash
-# Simple build
-go build -o openpasswd ./cmd/openpasswd
-
-# Build with version information
-VERSION="0.1.0"
-GIT_COMMIT=$(git rev-parse --short HEAD)
-BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
-
-go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
-                    -X 'github.com/r2unit/openpasswd/pkg/version.GitCommit=${GIT_COMMIT}' \
-                    -X 'github.com/r2unit/openpasswd/pkg/version.BuildDate=${BUILD_DATE}'" \
-         -o openpasswd ./cmd/openpasswd
-```
-
-### Cross-Compilation
-
-Build for multiple platforms:
-```bash
-make cross-compile  # Builds for Linux, macOS, and Windows
-```
-
-Binaries will be created in the `./dist/` directory.
+For more details, see the [Security Architecture](docs/security.md) (coming soon).
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please ensure:
+- All tests pass (`go test ./...`)
+- Code is properly formatted (`go fmt ./...`)
+- Linter checks pass (`golangci-lint run`)
+
+## FAQ
+
+### Why another password manager?
+
+OpenPasswd is designed for developers and terminal enthusiasts who prefer:
+- **Command-line interface** over GUI applications
+- **Local storage** over cloud synchronization
+- **Full control** over their security setup
+- **Open source** transparency and auditability
+- **Zero dependencies** on third-party services
+
+### How is this different from pass/gopass?
+
+While inspired by the Unix philosophy, OpenPasswd offers:
+- **Built-in encryption** without requiring GPG
+- **Structured data** with support for multiple password types
+- **Interactive TUI** for better user experience
+- **Cross-platform** support with consistent behavior
+- **Self-contained** single binary with no external dependencies
+
+### Is it secure?
+
+OpenPasswd uses industry-standard cryptography:
+- AES-256-GCM for encryption
+- Argon2id for password hashing
+- BLAKE2b for integrity checks
+
+However, as the project is in **pre-alpha**, it has not undergone a formal security audit. Use at your own risk.
+
+### Can I sync my passwords across devices?
+
+Currently, OpenPasswd is designed for local storage only. Cloud sync is not planned to maintain zero-knowledge architecture and maximum security.
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Author
 
-r2unit - https://github.com/r2unit
+[@r2unit](https://github.com/r2unit)
