@@ -30,7 +30,7 @@ func New(db *database.DB, salt []byte) *App {
 func (a *App) Run() error {
 	fmt.Println("\n╔═══════════════════════════════════════════════════════════╗")
 	fmt.Println("║              OpenPasswd - Password Manager                ║")
-	fmt.Println("╚═══════════════════════════════════════════════════════════╝\n")
+	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
 
 	passphrase, err := a.getPassphrase()
 	if err != nil {
@@ -57,10 +57,10 @@ func (a *App) Run() error {
 		case "6":
 			a.deletePassword()
 		case "7", "q", "quit", "exit":
-			fmt.Println("\nGoodbye!\n")
+			fmt.Println("\nGoodbye!")
 			return nil
 		default:
-			fmt.Println("Invalid option. Please try again.\n")
+			fmt.Println("Invalid option. Please try again.")
 		}
 	}
 }
@@ -78,7 +78,7 @@ func (a *App) showMenu() {
 	fmt.Println("│  5. Update password                    │")
 	fmt.Println("│  6. Delete password                    │")
 	fmt.Println("│  7. Exit                               │")
-	fmt.Println("└────────────────────────────────────────┘\n")
+	fmt.Println("└────────────────────────────────────────┘")
 }
 
 func (a *App) readInput(prompt string) string {
@@ -101,7 +101,7 @@ func (a *App) listPasswords() {
 	}
 
 	if len(passwords) == 0 {
-		fmt.Println("\nNo passwords stored yet.\n")
+		fmt.Println("\nNo passwords stored yet.")
 		return
 	}
 
@@ -115,7 +115,7 @@ func (a *App) listPasswords() {
 		fmt.Printf("║%-3d║ %-25s ║ %-25s ║\n", p.ID, truncate(p.Name, 25), truncate(p.Username, 25))
 	}
 
-	fmt.Println("╚═══╩═══════════════════════════╩═══════════════════════════╝\n")
+	fmt.Println("╚═══╩═══════════════════════════╩═══════════════════════════╝")
 }
 
 func (a *App) addPassword() {
@@ -150,14 +150,14 @@ func (a *App) addPassword() {
 		return
 	}
 
-	fmt.Println("Password added successfully!\n")
+	fmt.Println("Password added successfully!")
 }
 
 func (a *App) viewPassword() {
 	idStr := a.readInput("Enter password ID: ")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		fmt.Println("Invalid ID\n")
+		fmt.Println("Invalid ID")
 		return
 	}
 
@@ -182,7 +182,7 @@ func (a *App) viewPassword() {
 	fmt.Printf("║ Notes:    %-48s║\n", p.Notes)
 	fmt.Printf("║ Created:  %-48s║\n", p.CreatedAt.Format("2006-01-02 15:04:05"))
 	fmt.Printf("║ Updated:  %-48s║\n", p.UpdatedAt.Format("2006-01-02 15:04:05"))
-	fmt.Println("╚═══════════════════════════════════════════════════════════╝\n")
+	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
 }
 
 func (a *App) searchPasswords() {
@@ -195,7 +195,7 @@ func (a *App) searchPasswords() {
 	}
 
 	if len(passwords) == 0 {
-		fmt.Println("\nNo passwords found.\n")
+		fmt.Println("\nNo passwords found.")
 		return
 	}
 
@@ -208,14 +208,14 @@ func (a *App) searchPasswords() {
 		fmt.Printf("║%-3d║ %-25s ║ %-25s ║\n", p.ID, truncate(p.Name, 25), truncate(p.Username, 25))
 	}
 
-	fmt.Println("╚═══╩═══════════════════════════╩═══════════════════════════╝\n")
+	fmt.Println("╚═══╩═══════════════════════════╩═══════════════════════════╝")
 }
 
 func (a *App) updatePassword() {
 	idStr := a.readInput("Enter password ID to update: ")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		fmt.Println("Invalid ID\n")
+		fmt.Println("Invalid ID")
 		return
 	}
 
@@ -268,20 +268,20 @@ func (a *App) updatePassword() {
 		return
 	}
 
-	fmt.Println("Password updated successfully!\n")
+	fmt.Println("Password updated successfully!")
 }
 
 func (a *App) deletePassword() {
 	idStr := a.readInput("Enter password ID to delete: ")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		fmt.Println("Invalid ID\n")
+		fmt.Println("Invalid ID")
 		return
 	}
 
 	confirm := a.readInput("Are you sure? (yes/no): ")
 	if strings.ToLower(confirm) != "yes" && strings.ToLower(confirm) != "y" {
-		fmt.Println("Cancelled\n")
+		fmt.Println("Cancelled")
 		return
 	}
 
@@ -290,7 +290,7 @@ func (a *App) deletePassword() {
 		return
 	}
 
-	fmt.Println("Password deleted successfully!\n")
+	fmt.Println("Password deleted successfully!")
 }
 
 func truncate(s string, maxLen int) string {

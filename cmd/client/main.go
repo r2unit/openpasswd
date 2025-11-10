@@ -52,19 +52,19 @@ func main() {
 	// TODO: Server mode - Remote sync functionality (future feature)
 	// Will allow syncing passwords across devices via a self-hosted server
 	case "server":
-		fmt.Fprintf(os.Stderr, tui.ColorWarning("Server mode is currently disabled\n"))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorWarning("Server mode is currently disabled\n"))
 		os.Exit(1)
 
 	// TODO: Auth - Provider authentication (future feature)
 	// Will support connecting to external password providers (Proton Pass, Bitwarden, etc.)
 	case "auth":
-		fmt.Fprintf(os.Stderr, tui.ColorWarning("Auth functionality is currently disabled\n"))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorWarning("Auth functionality is currently disabled\n"))
 		os.Exit(1)
 
 	// TODO: Import - Password import from other managers (future feature)
 	// Will support importing from various password manager export formats
 	case "import":
-		fmt.Fprintf(os.Stderr, tui.ColorWarning("Import functionality is currently disabled\n"))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorWarning("Import functionality is currently disabled\n"))
 		os.Exit(1)
 
 	case "add":
@@ -137,42 +137,42 @@ func initializeConfig() {
 	// Generate salt
 	salt, err := crypto.GenerateSalt()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error generating salt: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error generating salt: %v\n", err)))
 		os.Exit(1)
 	}
 
 	if err := config.SaveSalt(salt); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving configuration: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error saving configuration: %v\n", err)))
 		os.Exit(1)
 	}
 
 	// Save current KDF version (600k iterations)
 	if err := config.SaveKDFVersion(crypto.CurrentKDFVersion); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
 		os.Exit(1)
 	}
 
 	// Encrypt and save recovery key
 	encryptedRecovery, err := crypto.EncryptRecoveryKey(setupResult.RecoveryKey, setupResult.Passphrase, salt)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error encrypting recovery key: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error encrypting recovery key: %v\n", err)))
 		os.Exit(1)
 	}
 
 	if err := config.SaveRecoveryKey(encryptedRecovery); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving recovery key: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error saving recovery key: %v\n", err)))
 		os.Exit(1)
 	}
 
 	// Save recovery key hash for verification
 	recoveryHash := crypto.GenerateRecoveryHash(setupResult.RecoveryKey)
 	if err := config.SaveRecoveryHash(crypto.EncodeRecoveryHash(recoveryHash)); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving recovery hash: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error saving recovery hash: %v\n", err)))
 		os.Exit(1)
 	}
 
 	if err := config.CreateDefaultConfig(); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorWarning(fmt.Sprintf("Warning: Could not create config.toml: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorWarning(fmt.Sprintf("Warning: Could not create config.toml: %v\n", err)))
 	}
 
 	configDir, _ := config.GetConfigDir()
@@ -285,12 +285,12 @@ func handleImport() {
 	// Always prompt for passphrase (plaintext storage removed for security)
 	passphrase, err := promptPassword("Enter master passphrase", true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)
 	}
 
 	if err := tui.RunImportTUI(db, cfg.Salt, passphrase); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
 		os.Exit(1)
 	}
 }
@@ -323,7 +323,7 @@ func handleAuth() {
 	case "help", "--help", "-h":
 		showAuthHelp()
 	default:
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Unknown auth command: %s\n", subcommand)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Unknown auth command: %s\n", subcommand)))
 		showAuthHelp()
 		os.Exit(1)
 	}
@@ -352,12 +352,12 @@ func handleAuthLogin() {
 	// Always prompt for passphrase (plaintext storage removed for security)
 	passphrase, err := promptPassword("Enter master passphrase", true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)
 	}
 
 	if err := tui.RunAuthLoginTUI(db, cfg.Salt, passphrase); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
 		os.Exit(1)
 	}
 }
@@ -441,7 +441,7 @@ func handleAdd() {
 	passphrase := ""
 
 	if err := tui.RunAddTUI(db, cfg.Salt, passphrase, passwordType); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
 		os.Exit(1)
 	}
 }
@@ -546,7 +546,7 @@ func handleSettings() {
 		handleRemoveYubiKey()
 
 	default:
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Unknown settings command: %s\n", subcommand)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Unknown settings command: %s\n", subcommand)))
 		showSettingsHelp()
 		os.Exit(1)
 	}
@@ -570,7 +570,7 @@ func handleList() {
 	// Always prompt for passphrase (plaintext storage removed for security)
 	passphrase, err := promptPassword("Enter master passphrase", true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -583,7 +583,7 @@ func handleList() {
 	}
 
 	if err := tui.RunListTUI(db, cfg.Salt, passphrase); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
 		os.Exit(1)
 	}
 }
@@ -618,7 +618,7 @@ func handleSetTOTP() {
 	username := "user"
 
 	if err := tui.RunTOTPSetupTUI(username); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -641,7 +641,7 @@ func handleRemoveTOTP() {
 	}
 
 	if err := config.RemoveTOTP(); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error removing TOTP: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error removing TOTP: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -663,7 +663,7 @@ func handleShowTOTPQR() {
 
 func handleSetYubiKey() {
 	if !mfa.IsYubiKeyAvailable() {
-		fmt.Fprintf(os.Stderr, tui.ColorError("YubiKey not detected or ykman not installed\n"))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError("YubiKey not detected or ykman not installed\n"))
 		fmt.Println(tui.ColorInfo("\nTo use YubiKey:"))
 		fmt.Println("1. Install ykman from https://www.yubico.com/")
 		fmt.Println("2. Insert your YubiKey")
@@ -672,23 +672,23 @@ func handleSetYubiKey() {
 	}
 
 	if err := mfa.ConfigureYubiKey(); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error configuring YubiKey: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error configuring YubiKey: %v\n", err)))
 		os.Exit(1)
 	}
 
 	challenge, err := mfa.GenerateYubiKeyChallenge()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error generating challenge: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error generating challenge: %v\n", err)))
 		os.Exit(1)
 	}
 
 	if err := mfa.TestYubiKey(challenge); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("YubiKey test failed: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("YubiKey test failed: %v\n", err)))
 		os.Exit(1)
 	}
 
 	if err := config.SaveYubiKeyChallenge(challenge); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving YubiKey config: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error saving YubiKey config: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -711,7 +711,7 @@ func handleRemoveYubiKey() {
 	}
 
 	if err := config.RemoveYubiKey(); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error removing YubiKey: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error removing YubiKey: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -762,7 +762,7 @@ func handleMigrate() {
 	case "help", "--help", "-h":
 		showMigrateHelp()
 	default:
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Unknown migrate command: %s\n", subcommand)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Unknown migrate command: %s\n", subcommand)))
 		showMigrateHelp()
 		os.Exit(1)
 	}
@@ -800,7 +800,7 @@ func handleMigrateUpgradeKDF() {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error loading config: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error loading config: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -817,7 +817,7 @@ func handleMigrateUpgradeKDF() {
 
 	db, err := database.New(cfg.DatabasePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error opening database: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error opening database: %v\n", err)))
 		os.Exit(1)
 	}
 	defer db.Close()
@@ -829,7 +829,7 @@ func handleMigrateUpgradeKDF() {
 
 		// Just update KDF version
 		if err := config.SaveKDFVersion(crypto.KDFVersionPBKDF2_600k); err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
+			fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
 			os.Exit(1)
 		}
 
@@ -839,7 +839,7 @@ func handleMigrateUpgradeKDF() {
 
 	passphrase, err := promptPassword("Enter master passphrase", false)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -847,7 +847,7 @@ func handleMigrateUpgradeKDF() {
 	oldEncryptor := crypto.NewEncryptorWithVersion(passphrase, cfg.Salt, cfg.KDFVersion)
 	testPass := passwords[0]
 	if _, err := oldEncryptor.Decrypt(testPass.Name); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError("Incorrect passphrase or corrupted database\n"))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError("Incorrect passphrase or corrupted database\n"))
 		os.Exit(1)
 	}
 
@@ -900,7 +900,7 @@ func handleMigrateUpgradeKDF() {
 		}
 
 		if err := db.UpdatePassword(p); err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nError updating password ID %d: %v\n", p.ID, err)))
+			fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("\nError updating password ID %d: %v\n", p.ID, err)))
 			os.Exit(1)
 		}
 	}
@@ -909,7 +909,7 @@ func handleMigrateUpgradeKDF() {
 
 	// Save new KDF version
 	if err := config.SaveKDFVersion(crypto.KDFVersionPBKDF2_600k); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error saving KDF version: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -974,7 +974,7 @@ func handleVersion() {
 
 		release, updateAvailable, err := version.CheckForUpdate()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Failed to check for updates: %v\n", err)))
+			fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Failed to check for updates: %v\n", err)))
 			return
 		}
 
@@ -998,7 +998,7 @@ func handleVersion() {
 		// Run interactive TUI
 		shouldUpgrade, err := tui.RunVersionTUI(versionInfo)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("TUI error: %v\n", err)))
+			fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("TUI error: %v\n", err)))
 			return
 		}
 
@@ -1012,7 +1012,7 @@ func handleVersion() {
 	// Disable automatic version checking
 	if flag == "--disable-checking" {
 		if err := config.DisableVersionCheck(); err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Failed to disable version checking: %v\n", err)))
+			fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Failed to disable version checking: %v\n", err)))
 			os.Exit(1)
 		}
 		fmt.Println(tui.ColorSuccess("✓ Automatic version checking disabled"))
@@ -1027,7 +1027,7 @@ func handleVersion() {
 	// Enable automatic version checking
 	if flag == "--enable-checking" {
 		if err := config.EnableVersionCheck(); err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Failed to enable version checking: %v\n", err)))
+			fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Failed to enable version checking: %v\n", err)))
 			os.Exit(1)
 		}
 		fmt.Println(tui.ColorSuccess("✓ Automatic version checking enabled"))
@@ -1051,7 +1051,7 @@ func handleUpgrade() {
 
 	release, updateAvailable, err := version.CheckForUpdate()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("Failed to check for updates: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Failed to check for updates: %v\n", err)))
 		os.Exit(1)
 	}
 
@@ -1089,12 +1089,12 @@ func handleUpgrade() {
 	// Show upgrade TUI
 	newVersion := release.TagName
 	if err := tui.RunUpgradeTUI(newVersion); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("TUI error: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("TUI error: %v\n", err)))
 	}
 
 	// Actually perform the upgrade
 	if err := version.Upgrade(); err != nil {
-		fmt.Fprintf(os.Stderr, tui.ColorError(fmt.Sprintf("\nUpgrade failed: %v\n", err)))
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("\nUpgrade failed: %v\n", err)))
 		os.Exit(1)
 	}
 
