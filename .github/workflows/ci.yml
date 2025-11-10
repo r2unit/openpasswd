@@ -1,22 +1,35 @@
-name: CI/CD
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
-      - main
+      - devel
       - master
-    tags:
-      - 'v*.*.*'  # Trigger on semver tags like v1.0.0, v0.2.1, etc.
   pull_request:
     branches:
-      - main
+      - devel
       - master
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type (only works on master branch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
-  # Job 1: Run tests
+  # ============================================================================
+  # CI JOBS - Run on devel branch and all PRs
+  # ============================================================================
+  
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -49,7 +62,6 @@ jobs:
           files: ./coverage.txt
           fail_ci_if_error: false
 
-  # Job 2: Lint code
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -68,12 +80,120 @@ jobs:
           version: latest
           args: --timeout=5m
 
-  # Job 3: Build binaries (on tags or main branch)
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build client
+        run: go build -v ./cmd/client
+
+      - name: Build server
+        run: go build -v ./cmd/server
+
+  # ============================================================================
+  # CD JOBS - Only run on master branch
+  # ============================================================================
+  
+  version:
+    name: Version & Tag
+    runs-on: ubuntu-latest
+    needs: [test, lint, build-check]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if should release
+        id: check
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          # Check if it's a merge from devel or manual dispatch
+          if [[ "$COMMIT_MSG" == *"Merge"* && "$COMMIT_MSG" == *"devel"* ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "✅ Release triggered: Merge from devel detected or manual dispatch"
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "⏭️  Skipping release: Not a merge from devel"
+          fi
+
+      - name: Get latest tag
+        id: get_tag
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+          fi
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "📌 Latest tag: $LATEST_TAG"
+
+      - name: Bump version
+        id: bump
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
+          VERSION=${LATEST_TAG#v}
+          
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          
+          BUMP_TYPE="${{ github.event.inputs.version_bump }}"
+          if [ -z "$BUMP_TYPE" ]; then
+            BUMP_TYPE="patch"
+          fi
+          
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "🚀 New version: v$NEW_VERSION (${BUMP_TYPE} bump)"
+
+      - name: Create and push tag
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
+          git push origin "v${NEW_VERSION}"
+          
+          echo "✅ Created and pushed tag v${NEW_VERSION}"
+
   build:
     name: Build (${{ matrix.os }}-${{ matrix.arch }})
     runs-on: ubuntu-latest
-    needs: [test, lint]
-    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
     strategy:
       matrix:
         include:
@@ -85,6 +205,11 @@ jobs:
             arch: arm64
             goos: linux
             goarch: arm64
+          - os: linux
+            arch: arm
+            goos: linux
+            goarch: arm
+            goarm: 7
           - os: darwin
             arch: amd64
             goos: darwin
@@ -98,6 +223,10 @@ jobs:
             goos: windows
             goarch: amd64
             ext: .exe
+          - os: freebsd
+            arch: amd64
+            goos: freebsd
+            goarch: amd64
 
     steps:
       - name: Checkout code
@@ -110,29 +239,32 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Get version
-        id: version
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION="dev-$(git rev-parse --short HEAD)"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version $VERSION"
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
 
       - name: Build binaries
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
           CGO_ENABLED: 0
         run: |
-          VERSION=${{ steps.version.outputs.version }}
+          VERSION="${{ needs.version.outputs.new_version }}"
           GIT_COMMIT=$(git rev-parse --short HEAD)
           BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
           
           CLIENT_BINARY="openpasswd-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
           SERVER_BINARY="openpasswd-server-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          
+          echo "🔨 Building ${CLIENT_BINARY} and ${SERVER_BINARY}"
           
           # Build client
           go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
@@ -156,50 +288,84 @@ jobs:
           sha256sum "${CLIENT_BINARY}" > "${CLIENT_BINARY}.sha256"
           sha256sum "${SERVER_BINARY}" > "${SERVER_BINARY}.sha256"
           
-          echo "Built ${CLIENT_BINARY} and ${SERVER_BINARY}"
+          echo "✅ Built ${CLIENT_BINARY} and ${SERVER_BINARY}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: binaries
+          name: binaries-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             openpasswd-*
             openpasswd-server-*
             *.sha256
+          retention-days: 1
 
-  # Job 4: Create GitHub Release (only on tags)
   release:
     name: Create Release
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: needs.version.outputs.should_release == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
-          name: binaries
-          path: ./dist
+          path: ./artifacts
 
-      - name: Get version and changelog
-        id: version
+      - name: Organize artifacts
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          mkdir -p ./dist
+          find ./artifacts -type f -exec cp {} ./dist/ \;
+          echo "📦 Release artifacts:"
+          ls -lah ./dist/
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.version.outputs.new_version }}"
           
-          # Extract changelog for this version if CHANGELOG.md exists
-          if [ -f CHANGELOG.md ]; then
-            sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$ d' > release_notes.md
+          PREVIOUS_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n2 | head -n1)
+          CURRENT_TAG="v${VERSION}"
+          
+          echo "# Release v${VERSION}" > release_notes.md
+          echo "" >> release_notes.md
+          
+          if [ ! -z "$PREVIOUS_TAG" ]; then
+            echo "## Changes since ${PREVIOUS_TAG}" >> release_notes.md
+            echo "" >> release_notes.md
+            git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%an)" --no-merges >> release_notes.md
           else
-            echo "Release v${VERSION}" > release_notes.md
+            echo "## Initial Release" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "First release of OpenPasswd" >> release_notes.md
           fi
+          
+          echo "" >> release_notes.md
+          echo "## Downloads" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "Choose the appropriate binary for your platform:" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- **Linux (x64)**: \`openpasswd-linux-amd64\`, \`openpasswd-server-linux-amd64\`" >> release_notes.md
+          echo "- **Linux (ARM64)**: \`openpasswd-linux-arm64\`, \`openpasswd-server-linux-arm64\`" >> release_notes.md
+          echo "- **Linux (ARMv7)**: \`openpasswd-linux-arm\`, \`openpasswd-server-linux-arm\`" >> release_notes.md
+          echo "- **macOS (Intel)**: \`openpasswd-darwin-amd64\`, \`openpasswd-server-darwin-amd64\`" >> release_notes.md
+          echo "- **macOS (Apple Silicon)**: \`openpasswd-darwin-arm64\`, \`openpasswd-server-darwin-arm64\`" >> release_notes.md
+          echo "- **Windows**: \`openpasswd-windows-amd64.exe\`, \`openpasswd-server-windows-amd64.exe\`" >> release_notes.md
+          echo "- **FreeBSD**: \`openpasswd-freebsd-amd64\`, \`openpasswd-server-freebsd-amd64\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "📝 All binaries include SHA256 checksums for verification." >> release_notes.md
+          
+          cat release_notes.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: OpenPasswd v${{ steps.version.outputs.version }}
+          tag_name: v${{ needs.version.outputs.new_version }}
+          name: OpenPasswd v${{ needs.version.outputs.new_version }}
           body_path: release_notes.md
           draft: false
           prerelease: false
@@ -216,3 +382,29 @@ jobs:
           git config user.email "actions@github.com"
           git tag -f latest
           git push -f origin latest
+          echo "✅ Updated 'latest' tag"
+
+  sync-devel:
+    name: Sync to devel
+    needs: [version, release]
+    runs-on: ubuntu-latest
+    if: needs.version.outputs.should_release == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge master back to devel
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          git fetch origin devel
+          git checkout devel
+          git merge origin/master --no-ff -m "chore: sync master after v${{ needs.version.outputs.new_version }} release [skip ci]"
+          git push origin devel
+          
+          echo "✅ Merged master back to devel"
