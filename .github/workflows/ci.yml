@@ -340,7 +340,10 @@ jobs:
           if [ ! -z "$PREVIOUS_TAG" ]; then
             echo "## Changes since ${PREVIOUS_TAG}" >> release_notes.md
             echo "" >> release_notes.md
-            git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%an)" --no-merges >> release_notes.md
+            # Use GitHub username from commit email (extracts username from email like user@users.noreply.github.com)
+            git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (@%ae)" --no-merges | \
+              sed 's/@\([^@]*\)@users\.noreply\.github\.com/@\1/g' | \
+              sed 's/@\([^@]*\)@.*/@\1/g' >> release_notes.md
           else
             echo "## Initial Release" >> release_notes.md
             echo "" >> release_notes.md
