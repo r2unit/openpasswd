@@ -74,11 +74,14 @@ jobs:
         with:
           go-version: '1.25'
 
+      - name: Install golangci-lint
+        run: |
+          # Install golangci-lint from source with Go 1.25 support
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-          args: --timeout=5m
+        run: |
+          golangci-lint run --timeout=5m
 
   build-check:
     name: Build Check
