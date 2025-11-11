@@ -234,7 +234,6 @@ EXAMPLES:
     openpasswd settings set-passphrase          # Set master passphrase
     openpasswd settings set-totp                # Enable TOTP authentication
     openpasswd settings set-yubikey             # Enable YubiKey authentication
-    openpasswd version --verbose                # Show detailed version info
     openpasswd version --check                  # Check for updates (interactive)
     openpasswd version --disable-checking       # Disable automatic update checks
     openpasswd version --enable-checking        # Enable automatic update checks
@@ -808,7 +807,6 @@ func handleVersion() {
 	if !hasFlag {
 		fmt.Printf("OpenPasswd v%s\n", info.Version)
 		fmt.Printf("\nRun 'openpasswd version --check' to check for updates\n")
-		fmt.Printf("Run 'openpasswd version --verbose' for build information\n")
 		return
 	}
 
@@ -897,7 +895,6 @@ func handleVersion() {
 	fmt.Printf("Unknown flag: %s\n", flag)
 	fmt.Printf("\nAvailable flags:\n")
 	fmt.Printf("  --check, -c           Check for updates (interactive)\n")
-	fmt.Printf("  --verbose, -v         Show detailed build information\n")
 	fmt.Printf("  --disable-checking    Disable automatic update checks\n")
 	fmt.Printf("  --enable-checking     Enable automatic update checks\n")
 }
