@@ -295,7 +295,20 @@ func handleAdd() {
 		passwordType = os.Args[2]
 	}
 
-	passphrase := ""
+	// Always prompt for passphrase
+	passphrase, err := promptPassword("Enter master passphrase", false)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
+		os.Exit(1)
+	}
+
+	// Validate passphrase
+	if !validatePassphrase(db, cfg.Salt, passphrase, cfg.KDFVersion) {
+		if err := tui.RunWrongPassphraseTUI(); err != nil {
+			fmt.Fprintf(os.Stderr, tui.ColorError("Error: %v\n"), err)
+		}
+		os.Exit(1)
+	}
 
 	if err := tui.RunAddTUI(db, cfg.Salt, passphrase, passwordType); err != nil {
 		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))

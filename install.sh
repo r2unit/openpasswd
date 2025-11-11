@@ -3,6 +3,7 @@
 # OpenPasswd Installation Script
 # Install with: curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/master/install.sh | bash
 # Or clone and run: ./install.sh
+# Install specific branch: ./install.sh --branch devel
 
 set -e
 
@@ -13,6 +14,7 @@ COMPLETION_DIR_ZSH="/usr/local/share/zsh/site-functions"
 REPO_URL="https://github.com/r2unit/openpasswd"
 REPO_API_URL="https://api.github.com/repos/r2unit/openpasswd"
 TEMP_DIR=""
+BRANCH="main"  # Default branch
 
 # Cleanup function
 cleanup() {
@@ -125,7 +127,7 @@ download_binary() {
 
 # Build from source
 build_from_source() {
-    echo "Building from source..."
+    echo "Building from source (branch: ${BRANCH})..."
     
     if ! command -v go &> /dev/null; then
         echo "Error: Go is not installed"
@@ -140,9 +142,10 @@ build_from_source() {
     fi
     
     TEMP_DIR=$(mktemp -d)
-    echo "Cloning repository..."
-    if ! git clone --depth 1 "$REPO_URL" "$TEMP_DIR" >/dev/null 2>&1; then
-        echo "Failed to clone repository"
+    echo "Cloning repository (branch: ${BRANCH})..."
+    if ! git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$TEMP_DIR" >/dev/null 2>&1; then
+        echo "Failed to clone repository from branch '${BRANCH}'"
+        echo "Make sure the branch exists"
         exit 1
     fi
     
@@ -169,9 +172,52 @@ build_from_source() {
     fi
 }
 
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --branch)
+            if [ -z "$2" ]; then
+                echo "Error: --branch requires a branch name"
+                echo "Usage: $0 --branch <branch-name>"
+                echo "Example: $0 --branch devel"
+                exit 1
+            fi
+            BRANCH="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "OpenPasswd Installer"
+            echo ""
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --branch <name>    Install from specific branch (default: main)"
+            echo "  -h, --help         Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  $0                 # Install from main branch"
+            echo "  $0 --branch devel  # Install from devel branch"
+            echo "  $0 --branch main   # Install from main branch (explicit)"
+            echo ""
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Run '$0 --help' for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 echo "OpenPasswd Installer"
 echo "===================="
 echo ""
+
+if [ "$BRANCH" != "main" ]; then
+    echo "WARNING: Installing from branch: ${BRANCH}"
+    echo "         (This may be an unstable development branch)"
+    echo ""
+fi
 
 if [ "$EUID" -ne 0 ]; then
     echo "Note: This script requires sudo privileges to install to $INSTALL_DIR"
@@ -186,12 +232,18 @@ echo "Platform: ${OS}/${ARCH}"
 echo ""
 echo "[2/4] Getting OpenPasswd binary..."
 
-# Try to download pre-built binary first
-if get_latest_version && download_binary; then
-    echo "Using pre-built binary"
-else
-    # Fall back to building from source
+# If a specific branch is requested, always build from source
+if [ "$BRANCH" != "main" ]; then
+    echo "Building from branch '${BRANCH}' (pre-built binaries only available for main branch)"
     build_from_source
+else
+    # Try to download pre-built binary first
+    if get_latest_version && download_binary; then
+        echo "Using pre-built binary"
+    else
+        # Fall back to building from source
+        build_from_source
+    fi
 fi
 
 echo ""

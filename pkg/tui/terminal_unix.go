@@ -20,9 +20,9 @@ func readPasswordWithBullets(prompt string, showBullets bool) (string, error) {
 	}
 
 	newState := oldState
-	newState.Lflag &^= syscall.ECHO
-	newState.Lflag |= syscall.ICANON | syscall.ISIG
-	newState.Iflag |= syscall.ICRNL
+	newState.Lflag &^= syscall.ECHO | syscall.ICANON
+	newState.Lflag |= syscall.ISIG
+	newState.Iflag &^= syscall.ICRNL
 
 	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), syscall.TCSETS, uintptr(unsafe.Pointer(&newState)), 0, 0, 0); err != 0 {
 		return "", fmt.Errorf("failed to set terminal state: %v", err)

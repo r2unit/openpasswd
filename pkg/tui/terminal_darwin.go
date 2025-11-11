@@ -27,9 +27,9 @@ func readPasswordWithBullets(prompt string, showBullets bool) (string, error) {
 	}
 
 	newState := oldState
-	newState.Lflag &^= syscall.ECHO
-	newState.Lflag |= syscall.ICANON | syscall.ISIG
-	newState.Iflag |= syscall.ICRNL
+	newState.Lflag &^= syscall.ECHO | syscall.ICANON
+	newState.Lflag |= syscall.ISIG
+	newState.Iflag &^= syscall.ICRNL
 
 	// Set terminal state using FreeBSD TIOCSETA
 	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), TIOCSETA, uintptr(unsafe.Pointer(&newState)), 0, 0, 0); err != 0 {
