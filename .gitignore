@@ -47,5 +47,15 @@ token.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Project binaries
 openpasswd
 openpasswd-server
+openpass
+pw
+
+# Test files
+test_*.go
+*_test_debug.go
+trace_*.go
+debug_*.go
