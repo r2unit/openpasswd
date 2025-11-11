@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -101,6 +102,8 @@ func (m SetupModel) handleEnter() (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.passphrase = m.input
+		// Debug: log passphrase details
+		fmt.Fprintf(os.Stderr, "\n[SETUP DEBUG] Passphrase set: len=%d, bytes=%v\n", len(m.passphrase), []byte(m.passphrase))
 		m.input = ""
 		m.step = 2
 
