@@ -54,6 +54,8 @@ func readPasswordWithBullets(prompt string) (string, error) {
 				fmt.Print(colorGrey)
 				fmt.Print(strings.Repeat("•", len(password)))
 				fmt.Print(colorReset)
+				// Clear to end of line to remove any leftover bullets
+				fmt.Print("\033[K")
 			}
 			continue
 		}
@@ -65,5 +67,9 @@ func readPasswordWithBullets(prompt string) (string, error) {
 		fmt.Print(colorReset)
 	}
 
-	return string(password), nil
+	result := string(password)
+	// Debug: log passphrase details
+	fmt.Fprintf(os.Stderr, "\n[TERM DEBUG] Password read: len=%d, bytes=%v\n", len(result), []byte(result))
+
+	return result, nil
 }

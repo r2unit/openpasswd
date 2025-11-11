@@ -430,7 +430,7 @@ func handleList() {
 	defer db.Close()
 
 	// Always prompt for passphrase (plaintext storage removed for security)
-	passphrase, err := promptPassword("Enter master passphrase", true)
+	passphrase, err := promptPassword("Enter master passphrase", false)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
 		os.Exit(1)

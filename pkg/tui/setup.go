@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -74,8 +75,10 @@ func (m SetupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			// Handle character input for passphrase
 			if m.step == 1 || m.step == 2 {
-				if len(msg.String()) == 1 {
-					m.input += msg.String()
+				str := msg.String()
+				// Only accept single printable characters (ASCII 32-126)
+				if len(str) == 1 && str[0] >= 32 && str[0] <= 126 {
+					m.input += str
 					m.err = ""
 				}
 			}
@@ -99,6 +102,8 @@ func (m SetupModel) handleEnter() (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.passphrase = m.input
+		// Debug: log passphrase details
+		fmt.Fprintf(os.Stderr, "\n[SETUP DEBUG] Passphrase set: len=%d, bytes=%v\n", len(m.passphrase), []byte(m.passphrase))
 		m.input = ""
 		m.step = 2
 
