@@ -37,11 +37,12 @@ var defaultWrongPassphraseTips = []string{
 }
 
 type errorModel struct {
-	message   string
-	tip       string
-	width     int
-	height    int
-	countdown int
+	message     string
+	tip         string
+	width       int
+	height      int
+	countdown   int
+	shouldRetry bool
 }
 
 func NewWrongPassphraseModel() *errorModel {
@@ -59,11 +60,12 @@ func NewWrongPassphraseModel() *errorModel {
 	}
 
 	return &errorModel{
-		message:   messages[rand.Intn(len(messages))],
-		tip:       tips[rand.Intn(len(tips))],
-		width:     80,
-		height:    24,
-		countdown: 3,
+		message:     messages[rand.Intn(len(messages))],
+		tip:         tips[rand.Intn(len(tips))],
+		width:       80,
+		height:      24,
+		countdown:   3,
+		shouldRetry: false,
 	}
 }
 
@@ -91,7 +93,14 @@ func (m errorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 
 	case tea.KeyMsg:
-		// Any key press exits
+		key := msg.String()
+		// ESC or ctrl+c quits without retry
+		if key == "esc" || key == "ctrl+c" {
+			m.shouldRetry = false
+			return m, tea.Quit
+		}
+		// Any other key triggers retry
+		m.shouldRetry = true
 		return m, tea.Quit
 	}
 
@@ -127,21 +136,31 @@ func (m errorModel) View() string {
 	// Footer with countdown
 	s.WriteString(addNormalStyle.Render("└  "))
 	if m.countdown > 0 {
-		countdownText := fmt.Sprintf("Closing in %d second%s (or press any key)",
+		countdownText := fmt.Sprintf("Press any key to retry • Closing in %d second%s",
 			m.countdown,
 			map[bool]string{true: "", false: "s"}[m.countdown == 1])
 		s.WriteString(listMetaStyle.Render(countdownText))
 	} else {
-		s.WriteString(listMetaStyle.Render("Press any key to exit"))
+		s.WriteString(listMetaStyle.Render("Press any key to retry • esc to quit"))
 	}
 
 	return s.String()
 }
 
 // RunWrongPassphraseTUI shows a fun error screen for wrong passphrase
-func RunWrongPassphraseTUI() error {
+// Returns (shouldRetry bool, error)
+func RunWrongPassphraseTUI() (bool, error) {
 	model := NewWrongPassphraseModel()
 	p := tea.NewProgram(model)
-	_, err := p.Run()
-	return err
+	finalModel, err := p.Run()
+	if err != nil {
+		return false, err
+	}
+
+	// Extract the final model state
+	if m, ok := finalModel.(errorModel); ok {
+		return m.shouldRetry, nil
+	}
+
+	return false, nil
 }

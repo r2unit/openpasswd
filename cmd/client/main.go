@@ -303,7 +303,8 @@ func handleAdd() {
 
 	// Validate passphrase
 	if !validatePassphrase(db, cfg.Salt, passphrase, cfg.KDFVersion) {
-		if err := tui.RunWrongPassphraseTUI(); err != nil {
+		_, err := tui.RunWrongPassphraseTUI()
+		if err != nil {
 			fmt.Fprintf(os.Stderr, tui.ColorError("Error: %v\n"), err)
 		}
 		os.Exit(1)
@@ -428,24 +429,37 @@ func handleList() {
 	}
 	defer db.Close()
 
-	// Always prompt for passphrase (plaintext storage removed for security)
-	passphrase, err := promptPassword("Enter master passphrase", false)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
-		os.Exit(1)
-	}
-
-	// Validate passphrase before showing TUI
-	if !validatePassphrase(db, cfg.Salt, passphrase, cfg.KDFVersion) {
-		if err := tui.RunWrongPassphraseTUI(); err != nil {
-			fmt.Fprintf(os.Stderr, tui.ColorError("Error: %v\n"), err)
+	// Loop until correct passphrase or user quits
+	for {
+		// Always prompt for passphrase (plaintext storage removed for security)
+		passphrase, err := promptPassword("Enter master passphrase", false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error reading passphrase: %v\n", err)))
+			os.Exit(1)
 		}
-		os.Exit(1)
-	}
 
-	if err := tui.RunListTUI(db, cfg.Salt, passphrase); err != nil {
-		fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
-		os.Exit(1)
+		// Validate passphrase before showing TUI
+		if !validatePassphrase(db, cfg.Salt, passphrase, cfg.KDFVersion) {
+			// Show error with countdown, returns true if user wants to retry
+			shouldRetry, err := tui.RunWrongPassphraseTUI()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, tui.ColorError("Error: %v\n"), err)
+				os.Exit(1)
+			}
+			if !shouldRetry {
+				// User let countdown expire or pressed ESC to quit
+				os.Exit(1)
+			}
+			// Loop back to prompt for passphrase again
+			continue
+		}
+
+		// Passphrase is correct, show list TUI
+		if err := tui.RunListTUI(db, cfg.Salt, passphrase); err != nil {
+			fmt.Fprintf(os.Stderr, "%s", tui.ColorError(fmt.Sprintf("Error: %v\n", err)))
+			os.Exit(1)
+		}
+		break
 	}
 }
 
