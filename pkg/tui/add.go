@@ -461,16 +461,35 @@ func (m addModel) View() string {
 	var s strings.Builder
 
 	if m.step == 0 {
-		s.WriteString(addTitleStyle.Render("Select Password Type"))
-		s.WriteString("\n\n")
+		// Tree-style header
+		s.WriteString(addNormalStyle.Render("┌  "))
+		s.WriteString(addLabelStyle.Render("Add credential"))
+		s.WriteString("\n")
+		s.WriteString(addNormalStyle.Render("│"))
+		s.WriteString("\n")
+		s.WriteString(addNormalStyle.Render("◆  "))
+		s.WriteString(addLabelStyle.Render("Select type"))
+		s.WriteString("\n")
+		s.WriteString(addNormalStyle.Render("│"))
+		s.WriteString("\n")
 
 		for i, pt := range passwordTypes {
+			prefix := "│  "
+			bullet := "○"
+			nameStyle := addNormalStyle
+
 			if i == m.cursor {
-				s.WriteString(addSelectedStyle.Render("→ "))
-				s.WriteString(addNormalStyle.Render(fmt.Sprintf("%-12s %s", pt.name, pt.desc)))
-			} else {
-				s.WriteString(addNormalStyle.Render(fmt.Sprintf("  %-12s %s", pt.name, pt.desc)))
+				bullet = "●"
+				nameStyle = addSelectedStyle
 			}
+
+			s.WriteString(addNormalStyle.Render(prefix))
+			s.WriteString(nameStyle.Render(bullet + "  "))
+			s.WriteString(nameStyle.Render(pt.name))
+			s.WriteString(addNormalStyle.Render(" "))
+			s.WriteString(addNormalStyle.Render("("))
+			s.WriteString(addNormalStyle.Render(pt.desc))
+			s.WriteString(addNormalStyle.Render(")"))
 			s.WriteString("\n")
 		}
 
@@ -481,13 +500,30 @@ func (m addModel) View() string {
 			s.WriteString(addNormalStyle.Render("↑/↓ or k/j: navigate • enter: select • :q or ctrl+c: quit"))
 		}
 	} else if m.step == 1 {
-		s.WriteString(addTitleStyle.Render(fmt.Sprintf("Add %s", strings.Title(m.passwordType))))
-		s.WriteString("\n\n")
+		// Tree-style header
+		s.WriteString(addNormalStyle.Render("┌  "))
+		s.WriteString(addLabelStyle.Render("Add credential"))
+		s.WriteString("\n")
+		s.WriteString(addNormalStyle.Render("│"))
+		s.WriteString("\n")
+		s.WriteString(addNormalStyle.Render("◆  "))
+		s.WriteString(addLabelStyle.Render(strings.Title(m.passwordType)))
+		s.WriteString("\n")
+		s.WriteString(addNormalStyle.Render("│"))
+		s.WriteString("\n")
 
-		for _, key := range m.inputOrder {
+		for idx, key := range m.inputOrder {
 			label := strings.ReplaceAll(strings.Title(key), "_", " ")
-			s.WriteString(addLabelStyle.Render(label + ":"))
-			s.WriteString(" ")
+			prefix := "│  "
+
+			s.WriteString(addNormalStyle.Render(prefix))
+
+			// Show field label
+			if key == m.currentInput {
+				s.WriteString(addSelectedStyle.Render(label + ": "))
+			} else {
+				s.WriteString(addLabelStyle.Render(label + ": "))
+			}
 
 			value := m.inputs[key]
 			isPasswordField := key == "password" || key == "cvv"
@@ -497,11 +533,11 @@ func (m addModel) View() string {
 					if m.showPassword[key] {
 						s.WriteString(addInputStyle.Render(value + "▋"))
 						s.WriteString(" ")
-						s.WriteString(addLabelStyle.Render("👁"))
+						s.WriteString(addLabelStyle.Render("(visible)"))
 					} else {
 						s.WriteString(addInputStyle.Render(strings.Repeat("•", len(value)) + "▋"))
 						s.WriteString(" ")
-						s.WriteString(addLabelStyle.Render("👁‍🗨"))
+						s.WriteString(addNormalStyle.Render("(hidden)"))
 					}
 				} else {
 					s.WriteString(addInputStyle.Render(value + "▋"))
@@ -518,6 +554,12 @@ func (m addModel) View() string {
 				}
 			}
 			s.WriteString("\n")
+
+			// Add separator between fields
+			if idx < len(m.inputOrder)-1 {
+				s.WriteString(addNormalStyle.Render("│"))
+				s.WriteString("\n")
+			}
 		}
 
 		s.WriteString("\n")
