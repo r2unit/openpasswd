@@ -1,6 +1,6 @@
 # OpenPasswd
 
-> A password manager built for the Terminal
+A terminal-based password manager that keeps your data local and encrypted.
 
 [![CI/CD Pipeline](https://github.com/r2unit/openpasswd/actions/workflows/ci.yml/badge.svg)](https://github.com/r2unit/openpasswd/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go)](https://go.dev/)
@@ -8,139 +8,75 @@
 [![Latest Release](https://img.shields.io/github/v/release/r2unit/openpasswd)](https://github.com/r2unit/openpasswd/releases/latest)
 
 > [!WARNING]
-> OpenPasswd is still under development and currently in a pre-alpha phase. Do not use it in production.
+> **Pre-alpha software.** Don't use this for anything important yet.
 
-## Installation
+## What is this?
 
-### Quick Install (Recommended)
+OpenPasswd is a password manager for people who live in the terminal. It stores everything locally with AES-256 encryption, supports TOTP for 2FA, and doesn't phone home. Ever.
 
+**What you can store:**
+- Logins (username, password, URL)
+- Credit cards
+- Secure notes
+- Identity info
+- Whatever else you need encrypted
+
+## Install
+
+**Quick install:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/r2unit/openpasswd/master/install.sh | bash
 ```
 
-This will automatically download, build, and install OpenPasswd with shell completions.
+**Or grab a binary:** [releases page](https://github.com/r2unit/openpasswd/releases/latest)
 
-### Download Pre-built Binaries
-
-Download the latest release for your platform from the [releases page](https://github.com/r2unit/openpasswd/releases/latest).
-
-### Build from Source
-
+**Or build it yourself:**
 ```bash
 git clone https://github.com/r2unit/openpasswd.git
 cd openpasswd
 make install
 ```
 
-## Quick Start
+## Usage
 
 ```bash
-# Initialize configuration
-openpasswd init
-
-# Add a password
-openpasswd add
-
-# List passwords
-openpasswd list
-
-# Configure MFA
-openpasswd settings set-totp
+openpasswd init              # First-time setup
+openpasswd add               # Add a password
+openpasswd list              # View your passwords
+openpasswd settings set-totp # Enable 2FA
 ```
 
-## Documentation
+That's it. The TUI will guide you through the rest.
 
-### Commands
+## Security stuff
 
-- `openpasswd init` - Initialize configuration and database
-- `openpasswd add` - Add a new password entry
-- `openpasswd list` - List and search passwords
-- `openpasswd settings` - Manage settings (passphrase, MFA, etc.)
-- `openpasswd version` - Show version information
-- `openpasswd upgrade` - Upgrade to the latest version
+- **AES-256-GCM** encryption
+- **Argon2id** key derivation
+- **BLAKE2b** integrity checks
+- **Local only** - no cloud, no sync, no tracking
+- **Zero-knowledge** - your data stays on your machine
 
-### Supported Password Types
+Since this is pre-alpha, there's no security audit yet. Use at your own risk.
 
-- **Login Credentials** - Username, password, URL, notes
-- **Credit Cards** - Number, cardholder, expiry, CVV
-- **Secure Notes** - Encrypted text notes
-- **Identity Information** - Personal details
-- **Custom Fields** - Additional encrypted key-value pairs
+## Why this exists
 
-### MFA Support
+Most password managers want you to trust their cloud. OpenPasswd doesn't have a cloud. It's just you, your terminal, and an encrypted database on your disk.
 
-- **Master Passphrase** - Simple password protection
-- **TOTP (Time-based OTP)** - Google Authenticator, Authy, etc.
-- **YubiKey** - Hardware key authentication (coming soon)
-
-Configure MFA:
-```bash
-openpasswd settings set-passphrase  # Set master passphrase
-openpasswd settings set-totp         # Enable TOTP
-```
-
-### Security
-
-- **AES-256-GCM encryption** for all stored data
-- **Argon2id** for key derivation
-- **BLAKE2b** for integrity verification
-- **Local storage only** - your data never leaves your device
-- **Zero-knowledge architecture** - no cloud sync, no telemetry
-
-For more details, see the [Security Architecture](docs/security.md) (coming soon).
+If you like `pass` or `gopass` but want something that doesn't need GPG and has a nicer interface, this might be for you.
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
+Found a bug? Want to add something? PRs are welcome.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-Please ensure:
-- All tests pass (`go test ./...`)
-- Code is properly formatted (`go fmt ./...`)
-- Linter checks pass (`golangci-lint run`)
-
-## FAQ
-
-### Why another password manager?
-
-OpenPasswd is designed for developers and terminal enthusiasts who prefer:
-- **Command-line interface** over GUI applications
-- **Local storage** over cloud synchronization
-- **Full control** over their security setup
-- **Open source** transparency and auditability
-- **Zero dependencies** on third-party services
-
-### How is this different from pass/gopass?
-
-While inspired by the Unix philosophy, OpenPasswd offers:
-- **Built-in encryption** without requiring GPG
-- **Structured data** with support for multiple password types
-- **Interactive TUI** for better user experience
-- **Cross-platform** support with consistent behavior
-- **Self-contained** single binary with no external dependencies
-
-### Is it secure?
-
-OpenPasswd uses industry-standard cryptography:
-- AES-256-GCM for encryption
-- Argon2id for password hashing
-- BLAKE2b for integrity checks
-
-However, as the project is in **pre-alpha**, it has not undergone a formal security audit. Use at your own risk.
-
-### Can I sync my passwords across devices?
-
-Currently, OpenPasswd is designed for local storage only. Cloud sync is not planned to maintain zero-knowledge architecture and maximum security.
+1. Fork it
+2. Make your changes
+3. Run `go test ./...` and `go fmt ./...`
+4. Send a PR
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT - see [LICENSE](LICENSE)
 
-## Author
+---
 
-[@r2unit](https://github.com/r2unit)
+Made by [@r2unit](https://github.com/r2unit)
