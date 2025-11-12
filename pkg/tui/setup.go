@@ -153,32 +153,52 @@ func (m SetupModel) View() string {
 func (m SetupModel) renderWelcome() string {
 	var s strings.Builder
 
+	// Tree-style header
+	s.WriteString(normalStyle.Render("┌  "))
+	s.WriteString(titleStyle.Render("Welcome to OpenPasswd"))
 	s.WriteString("\n")
-	s.WriteString(titleStyle.Render("🔐 Welcome to OpenPasswd"))
-	s.WriteString("\n\n")
-	s.WriteString(infoStyle.Render("Let's set up your secure password manager."))
-	s.WriteString("\n\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(infoStyle.Render("Let's set up your secure password manager"))
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
 
+	// Setup steps
+	s.WriteString(normalStyle.Render("│  "))
 	s.WriteString(normalStyle.Render("You'll need to:"))
 	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│  "))
 	s.WriteString(normalStyle.Render("  1. Create a strong master passphrase"))
 	s.WriteString("\n")
-	s.WriteString(normalStyle.Render("  2. Save your recovery key (in case you forget your passphrase)"))
-	s.WriteString("\n\n")
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(normalStyle.Render("  2. Save your recovery key"))
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
 
-	s.WriteString(warningStyle.Render("⚠  Important:"))
+	// Important notes
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(warningStyle.Render("Important:"))
 	s.WriteString("\n")
-	s.WriteString(dimStyle.Render("  • Your master passphrase is NEVER stored"))
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(dimStyle.Render("  • Your passphrase is NEVER stored"))
 	s.WriteString("\n")
-	s.WriteString(dimStyle.Render("  • We cannot recover your passphrase if you forget it"))
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(dimStyle.Render("  • We cannot recover it if you forget"))
 	s.WriteString("\n")
-	s.WriteString(dimStyle.Render("  • Keep your recovery key in a safe place"))
-	s.WriteString("\n\n")
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(dimStyle.Render("  • Keep your recovery key safe"))
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
 
-	s.WriteString(successStyle.Render("→ Press Enter to continue"))
-	s.WriteString("\n")
-	s.WriteString(dimStyle.Render("  Press Esc to cancel"))
-	s.WriteString("\n")
+	// Footer
+	s.WriteString(normalStyle.Render("└  "))
+	s.WriteString(successStyle.Render("Press Enter to continue"))
+	s.WriteString(dimStyle.Render(" • "))
+	s.WriteString(dimStyle.Render("Esc to cancel"))
 
 	return s.String()
 }
@@ -186,11 +206,12 @@ func (m SetupModel) renderWelcome() string {
 func (m SetupModel) renderPassphraseEntry() string {
 	var s strings.Builder
 
+	// Tree-style header
+	s.WriteString(normalStyle.Render("┌  "))
+	s.WriteString(titleStyle.Render("Create master passphrase"))
 	s.WriteString("\n")
-	s.WriteString(titleStyle.Render("🔑 Create Master Passphrase"))
-	s.WriteString("\n\n")
-	s.WriteString(infoStyle.Render("Enter a strong master passphrase:"))
-	s.WriteString("\n\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
 
 	// Password input field
 	display := strings.Repeat("•", len(m.input))
@@ -198,35 +219,47 @@ func (m SetupModel) renderPassphraseEntry() string {
 		display = dimStyle.Render("(min 8 characters)")
 	}
 
-	s.WriteString(normalStyle.Render("Passphrase: "))
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(selectedStyle.Render("Passphrase: "))
 	s.WriteString(selectedStyle.Render(display))
-	s.WriteString("\n\n")
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
 
 	// Strength indicator
 	strength, color := passphraseStrength(m.input)
 	if len(m.input) > 0 {
 		strengthStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+		s.WriteString(normalStyle.Render("│  "))
 		s.WriteString(strengthStyle.Render(fmt.Sprintf("Strength: %s", strength)))
-		s.WriteString("\n\n")
+		s.WriteString("\n")
+		s.WriteString(normalStyle.Render("│"))
+		s.WriteString("\n")
 	}
 
 	// Tips
-	s.WriteString(dimStyle.Render("Tips for a strong passphrase:"))
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(dimStyle.Render("Tips:"))
 	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│  "))
 	s.WriteString(dimStyle.Render("  • Use 12+ characters"))
 	s.WriteString("\n")
-	s.WriteString(dimStyle.Render("  • Mix uppercase, lowercase, numbers, symbols"))
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(dimStyle.Render("  • Mix upper, lower, numbers, symbols"))
 	s.WriteString("\n")
-	s.WriteString(dimStyle.Render("  • Use a phrase you'll remember but others can't guess"))
-	s.WriteString("\n\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
 
 	if m.err != "" {
+		s.WriteString(normalStyle.Render("│  "))
 		s.WriteString(errorStyle.Render("✗ " + m.err))
-		s.WriteString("\n\n")
+		s.WriteString("\n")
+		s.WriteString(normalStyle.Render("│"))
+		s.WriteString("\n")
 	}
 
+	s.WriteString(normalStyle.Render("└  "))
 	s.WriteString(dimStyle.Render("Press Enter to continue • Esc to cancel"))
-	s.WriteString("\n")
 
 	return s.String()
 }
@@ -234,28 +267,35 @@ func (m SetupModel) renderPassphraseEntry() string {
 func (m SetupModel) renderPassphraseConfirm() string {
 	var s strings.Builder
 
+	// Tree-style header
+	s.WriteString(normalStyle.Render("┌  "))
+	s.WriteString(titleStyle.Render("Confirm passphrase"))
 	s.WriteString("\n")
-	s.WriteString(titleStyle.Render("🔑 Confirm Master Passphrase"))
-	s.WriteString("\n\n")
-	s.WriteString(infoStyle.Render("Enter your passphrase again to confirm:"))
-	s.WriteString("\n\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
 
 	display := strings.Repeat("•", len(m.input))
 	if len(m.input) == 0 {
 		display = dimStyle.Render("(confirm passphrase)")
 	}
 
-	s.WriteString(normalStyle.Render("Confirm: "))
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(selectedStyle.Render("Confirm: "))
 	s.WriteString(selectedStyle.Render(display))
-	s.WriteString("\n\n")
+	s.WriteString("\n")
 
 	if m.err != "" {
+		s.WriteString(normalStyle.Render("│"))
+		s.WriteString("\n")
+		s.WriteString(normalStyle.Render("│  "))
 		s.WriteString(errorStyle.Render("✗ " + m.err))
-		s.WriteString("\n\n")
+		s.WriteString("\n")
 	}
 
-	s.WriteString(dimStyle.Render("Press Enter to continue • Esc to cancel"))
+	s.WriteString(normalStyle.Render("│"))
 	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("└  "))
+	s.WriteString(dimStyle.Render("Press Enter to continue • Esc to cancel"))
 
 	return s.String()
 }
@@ -263,43 +303,62 @@ func (m SetupModel) renderPassphraseConfirm() string {
 func (m SetupModel) renderRecoveryKey() string {
 	var s strings.Builder
 
+	// Tree-style header
+	s.WriteString(normalStyle.Render("┌  "))
+	s.WriteString(titleStyle.Render("Your recovery key"))
 	s.WriteString("\n")
-	s.WriteString(titleStyle.Render("🔐 Your Recovery Key"))
-	s.WriteString("\n\n")
-	s.WriteString(warningStyle.Render("⚠  IMPORTANT: Save this recovery key!"))
-	s.WriteString("\n\n")
-	s.WriteString(infoStyle.Render("If you forget your master passphrase, this recovery key"))
+	s.WriteString(normalStyle.Render("│"))
 	s.WriteString("\n")
-	s.WriteString(infoStyle.Render("is the ONLY way to access your passwords."))
-	s.WriteString("\n\n")
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(warningStyle.Render("IMPORTANT: Save this recovery key!"))
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
 
-	// Recovery key display (formatted nicely)
+	// Recovery key display
 	keyStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#00FF00")).
 		Background(lipgloss.Color("#1A1A1A")).
 		Bold(true).
-		Padding(1, 2)
+		Padding(0, 1)
 
+	s.WriteString(normalStyle.Render("│  "))
 	s.WriteString(keyStyle.Render(formatRecoveryKey(m.recoveryKey)))
-	s.WriteString("\n\n")
-
-	s.WriteString(dimStyle.Render("📝 Write this down or save it in a password manager"))
 	s.WriteString("\n")
-	s.WriteString(dimStyle.Render("🔒 Store it somewhere safe (not on this computer)"))
+	s.WriteString(normalStyle.Render("│"))
 	s.WriteString("\n")
-	s.WriteString(dimStyle.Render("⚠  Never share this key with anyone"))
-	s.WriteString("\n\n")
 
+	// Instructions
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(dimStyle.Render("• Write this down or save it securely"))
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(dimStyle.Render("• Store it somewhere safe"))
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│  "))
+	s.WriteString(dimStyle.Render("• Never share this with anyone"))
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("│"))
+	s.WriteString("\n")
+
+	// Confirmation checkbox
 	if !m.confirmed {
-		s.WriteString(successStyle.Render("☐ I have saved my recovery key"))
-		s.WriteString("\n\n")
-		s.WriteString(dimStyle.Render("Press Enter to confirm • Tab to toggle"))
+		s.WriteString(normalStyle.Render("│  "))
+		s.WriteString(normalStyle.Render("☐ I have saved my recovery key"))
+		s.WriteString("\n")
+		s.WriteString(normalStyle.Render("│"))
+		s.WriteString("\n")
+		s.WriteString(normalStyle.Render("└  "))
+		s.WriteString(dimStyle.Render("Press Enter to confirm"))
 	} else {
+		s.WriteString(normalStyle.Render("│  "))
 		s.WriteString(successStyle.Render("☑ I have saved my recovery key"))
-		s.WriteString("\n\n")
-		s.WriteString(successStyle.Render("→ Press Enter to finish setup"))
+		s.WriteString("\n")
+		s.WriteString(normalStyle.Render("│"))
+		s.WriteString("\n")
+		s.WriteString(normalStyle.Render("└  "))
+		s.WriteString(successStyle.Render("Press Enter to finish setup"))
 	}
-	s.WriteString("\n")
 
 	return s.String()
 }

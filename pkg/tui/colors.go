@@ -30,3 +30,11 @@ func ColorWarning(text string) string {
 func ColorInfo(text string) string {
 	return fmt.Sprintf("%s%s%s", colorBlueStart, text, colorReset)
 }
+
+func ColorNormal(text string) string {
+	return fmt.Sprintf("\033[38;5;243m%s%s", text, colorReset)
+}
+
+func ColorMeta(text string) string {
+	return fmt.Sprintf("\033[38;5;243m%s%s", text, colorReset)
+}

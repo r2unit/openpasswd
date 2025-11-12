@@ -170,13 +170,19 @@ func initializeConfig() {
 	}
 
 	configDir, _ := config.GetConfigDir()
-	fmt.Println(tui.ColorSuccess("\n✓ Configuration initialized successfully!"))
-	fmt.Printf("  Config directory: %s\n", configDir)
-	fmt.Printf("  Config file: %s/config.toml\n", configDir)
+
+	// Tree-style success message
 	fmt.Println()
-	fmt.Println(tui.ColorWarning("⚠  Your recovery key has been saved encrypted."))
-	fmt.Println(tui.ColorInfo("  Keep your handwritten/backup copy in a safe place!"))
-	fmt.Printf("\n%s\n", tui.ColorInfo("Run 'openpasswd list' to start using the password manager"))
+	fmt.Println(tui.ColorNormal("┌  ") + tui.ColorSuccess("Setup complete"))
+	fmt.Println(tui.ColorNormal("│"))
+	fmt.Println(tui.ColorNormal("│  ") + tui.ColorSuccess("✓ Configuration initialized"))
+	fmt.Println(tui.ColorNormal("│  ") + tui.ColorMeta("  Config: "+configDir))
+	fmt.Println(tui.ColorNormal("│"))
+	fmt.Println(tui.ColorNormal("│  ") + tui.ColorWarning("Important:"))
+	fmt.Println(tui.ColorNormal("│  ") + tui.ColorMeta("  • Recovery key saved encrypted"))
+	fmt.Println(tui.ColorNormal("│  ") + tui.ColorMeta("  • Keep your backup copy safe"))
+	fmt.Println(tui.ColorNormal("│"))
+	fmt.Println(tui.ColorNormal("└  ") + tui.ColorInfo("Run 'openpasswd list' to get started"))
 }
 
 func initPromptFallback() tui.InitChoice {
