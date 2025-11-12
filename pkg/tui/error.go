@@ -7,11 +7,11 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/r2unit/openpasswd/pkg/config"
 )
 
-// Error messages with personality
-var wrongPassphraseMessages = []string{
+// Default error messages with personality
+var defaultWrongPassphraseMessages = []string{
 	"Nope! That's not it, chief.",
 	"Nice try, but that's not the magic word.",
 	"Access denied! (Insert dramatic gasp here)",
@@ -26,7 +26,7 @@ var wrongPassphraseMessages = []string{
 	"That passphrase is more scrambled than your eggs.",
 }
 
-var wrongPassphraseTips = []string{
+var defaultWrongPassphraseTips = []string{
 	"Maybe it's that one from your birthday?",
 	"Was it uppercase or lowercase?",
 	"Check if Caps Lock is on (classic mistake).",
@@ -46,9 +46,21 @@ type errorModel struct {
 
 func NewWrongPassphraseModel() *errorModel {
 	rand.Seed(time.Now().UnixNano())
+
+	// Load custom messages from config, or use defaults
+	messages := defaultWrongPassphraseMessages
+	tips := defaultWrongPassphraseTips
+
+	if customMessages := config.LoadErrorMessages(); len(customMessages) > 0 {
+		messages = customMessages
+	}
+	if customTips := config.LoadErrorTips(); len(customTips) > 0 {
+		tips = customTips
+	}
+
 	return &errorModel{
-		message:   wrongPassphraseMessages[rand.Intn(len(wrongPassphraseMessages))],
-		tip:       wrongPassphraseTips[rand.Intn(len(wrongPassphraseTips))],
+		message:   messages[rand.Intn(len(messages))],
+		tip:       tips[rand.Intn(len(tips))],
 		width:     80,
 		height:    24,
 		countdown: 3,
@@ -89,45 +101,38 @@ func (m errorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m errorModel) View() string {
 	var s strings.Builder
 
-	// Title
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#FF5F5F")).
-		MarginTop(2).
-		MarginBottom(1).
-		Align(lipgloss.Center)
-
-	messageStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FFAF00")).
-		MarginBottom(1).
-		Align(lipgloss.Center)
-
-	tipStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#5FAFFF")).
-		Italic(true).
-		MarginTop(1).
-		Align(lipgloss.Center)
-
-	instructionStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#666666")).
-		MarginTop(2).
-		Align(lipgloss.Center)
-
+	// Tree-style header
+	s.WriteString(addNormalStyle.Render("┌  "))
+	s.WriteString(addErrorStyle.Render("Wrong passphrase"))
 	s.WriteString("\n")
-	s.WriteString(titleStyle.Render("WRONG PASSPHRASE"))
-	s.WriteString("\n\n")
-	s.WriteString(messageStyle.Render(m.message))
-	s.WriteString("\n\n")
-	s.WriteString(tipStyle.Render(m.tip))
-	s.WriteString("\n\n")
+	s.WriteString(addNormalStyle.Render("│"))
+	s.WriteString("\n")
 
+	// Error message
+	s.WriteString(addNormalStyle.Render("│  "))
+	s.WriteString(addSelectedStyle.Render("✗  "))
+	s.WriteString(addSelectedStyle.Render(m.message))
+	s.WriteString("\n")
+	s.WriteString(addNormalStyle.Render("│"))
+	s.WriteString("\n")
+
+	// Helpful tip
+	s.WriteString(addNormalStyle.Render("│  "))
+	s.WriteString(listMetaStyle.Render("💡  "))
+	s.WriteString(listMetaStyle.Render(m.tip))
+	s.WriteString("\n")
+	s.WriteString(addNormalStyle.Render("│"))
+	s.WriteString("\n")
+
+	// Footer with countdown
+	s.WriteString(addNormalStyle.Render("└  "))
 	if m.countdown > 0 {
-		countdownText := fmt.Sprintf("Closing in %d second%s... (or press any key)",
+		countdownText := fmt.Sprintf("Closing in %d second%s (or press any key)",
 			m.countdown,
 			map[bool]string{true: "", false: "s"}[m.countdown == 1])
-		s.WriteString(instructionStyle.Render(countdownText))
+		s.WriteString(listMetaStyle.Render(countdownText))
 	} else {
-		s.WriteString(instructionStyle.Render("Press any key to exit..."))
+		s.WriteString(listMetaStyle.Render("Press any key to exit"))
 	}
 
 	return s.String()

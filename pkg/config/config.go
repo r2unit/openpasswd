@@ -418,3 +418,51 @@ func EnableVersionCheck() error {
 
 	return nil
 }
+
+// LoadErrorMessages loads custom error messages from config, returns empty slice if none
+func LoadErrorMessages() []string {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return nil
+	}
+
+	configPath := filepath.Join(configDir, "config.toml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	type ConfigFile struct {
+		ErrorMessages []string `toml:"error_messages"`
+	}
+
+	var cfg ConfigFile
+	if _, err := toml.DecodeFile(configPath, &cfg); err != nil {
+		return nil
+	}
+
+	return cfg.ErrorMessages
+}
+
+// LoadErrorTips loads custom error tips from config, returns empty slice if none
+func LoadErrorTips() []string {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return nil
+	}
+
+	configPath := filepath.Join(configDir, "config.toml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	type ConfigFile struct {
+		ErrorTips []string `toml:"error_tips"`
+	}
+
+	var cfg ConfigFile
+	if _, err := toml.DecodeFile(configPath, &cfg); err != nil {
+		return nil
+	}
+
+	return cfg.ErrorTips
+}
