@@ -341,19 +341,20 @@ func (m listModel) View() string {
 				}
 			}
 
-			// Render the password entry
-			cursor := "  "
-			if i == m.cursor {
-				cursor = listSelectedStyle.Render("→ ")
-			}
+			// Render the password entry with tree-style bullets
+			bullet := "●"
+			prefix := "│  "
 
-			// First line: Name (with highlighting if searching)
+			// First line: bullet + Name (with highlighting if searching)
 			nameStyle := listNormalStyle
 			nameHighlightStyle := listHighlightStyle
 			if i == m.cursor {
 				nameStyle = listSelectedStyle
+				bullet = "●" // Keep bullet same, but name will be highlighted
 			}
-			s.WriteString(cursor)
+
+			s.WriteString(listNormalStyle.Render(prefix))
+			s.WriteString(nameStyle.Render(bullet + "  "))
 			if m.searchInput != "" {
 				s.WriteString(highlightText(decryptedName, m.searchInput, nameStyle, nameHighlightStyle))
 			} else {
@@ -361,7 +362,7 @@ func (m listModel) View() string {
 			}
 			s.WriteString("\n")
 
-			// Second line: metadata (username • website • notes)
+			// Second line: metadata (username • website • notes) with proper indentation
 			var metaParts []struct {
 				text      string
 				truncated string
@@ -386,7 +387,7 @@ func (m listModel) View() string {
 			}
 
 			if len(metaParts) > 0 {
-				s.WriteString("  ") // Indent
+				s.WriteString(listNormalStyle.Render(prefix + "   ")) // Indent under the bullet
 				for idx, part := range metaParts {
 					// Apply highlighting to metadata if searching
 					if m.searchInput != "" {
@@ -403,11 +404,22 @@ func (m listModel) View() string {
 				s.WriteString("\n")
 			}
 
-			// Add spacing between entries
+			// Add pipe separator between entries
 			if i < len(m.filteredPasswords)-1 {
+				s.WriteString(listNormalStyle.Render("│"))
 				s.WriteString("\n")
 			}
 		}
+
+		// Footer with tree-style closing
+		s.WriteString(listNormalStyle.Render("│"))
+		s.WriteString("\n")
+		s.WriteString(listNormalStyle.Render("└  "))
+		plural := "s"
+		if len(m.filteredPasswords) == 1 {
+			plural = ""
+		}
+		s.WriteString(listMetaStyle.Render(fmt.Sprintf("%d credential%s", len(m.filteredPasswords), plural)))
 	}
 
 	s.WriteString("\n")
