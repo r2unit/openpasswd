@@ -90,11 +90,8 @@ func TestSaveAndLoadSalt(t *testing.T) {
 	os.Setenv("HOME", tmpHome)
 	defer os.Setenv("HOME", originalHome)
 
-	// Generate and save salt
-	salt := []byte("test-salt-32-bytes-long-test!")
-	if len(salt) < 32 {
-		t.Fatal("Test salt too short")
-	}
+	// Generate and save salt (needs to be exactly 32 bytes)
+	salt := []byte("test-salt-32-bytes-long-test")
 
 	err := SaveSalt(salt)
 	if err != nil {
