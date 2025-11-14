@@ -240,7 +240,7 @@ func TestRemoveTOTP(t *testing.T) {
 	defer os.Setenv("HOME", originalHome)
 
 	// Save TOTP
-	SaveTOTPSecret("test-secret")
+	_ = SaveTOTPSecret("test-secret")
 
 	// Remove TOTP
 	err := RemoveTOTP()
@@ -318,7 +318,7 @@ func TestRemoveYubiKey(t *testing.T) {
 	defer os.Setenv("HOME", originalHome)
 
 	// Save YubiKey
-	SaveYubiKeyChallenge("test-challenge")
+	_ = SaveYubiKeyChallenge("test-challenge")
 
 	// Remove YubiKey
 	err := RemoveYubiKey()

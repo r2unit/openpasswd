@@ -162,7 +162,7 @@ func TestGetPassword(t *testing.T) {
 		Username: "user",
 		Password: "pass",
 	}
-	db.AddPassword(p)
+	_ = db.AddPassword(p)
 
 	// Get existing password
 	retrieved, err := db.GetPassword(p.ID)
@@ -204,7 +204,7 @@ func TestListPasswords(t *testing.T) {
 			Username: "user",
 			Password: "pass",
 		}
-		db.AddPassword(p)
+		_ = db.AddPassword(p)
 	}
 
 	// List should return all passwords
@@ -229,7 +229,7 @@ func TestUpdatePassword(t *testing.T) {
 		Username: "user",
 		Password: "pass",
 	}
-	db.AddPassword(p)
+	_ = db.AddPassword(p)
 
 	// Update password
 	time.Sleep(10 * time.Millisecond) // Ensure UpdatedAt changes
@@ -287,7 +287,7 @@ func TestDeletePassword(t *testing.T) {
 		Username: "user",
 		Password: "pass",
 	}
-	db.AddPassword(p)
+	_ = db.AddPassword(p)
 
 	// Delete password
 	err := db.DeletePassword(p.ID)
@@ -335,7 +335,7 @@ func TestSearchPasswords(t *testing.T) {
 	}
 
 	for _, p := range passwords {
-		db.AddPassword(p)
+		_ = db.AddPassword(p)
 	}
 
 	tests := []struct {
@@ -408,7 +408,7 @@ func TestDatabasePersistence(t *testing.T) {
 		Username: "user",
 		Password: "pass",
 	}
-	db1.AddPassword(p)
+	_ = db1.AddPassword(p)
 	db1.Close()
 
 	// Verify file was created
@@ -443,7 +443,7 @@ func TestConcurrentAccess(t *testing.T) {
 		Username: "user",
 		Password: "pass",
 	}
-	db.AddPassword(p)
+	_ = db.AddPassword(p)
 
 	// Concurrent reads should work
 	done := make(chan bool, 10)

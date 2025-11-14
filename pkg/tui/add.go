@@ -50,10 +50,10 @@ var passwordTypes = []struct {
 }
 
 var (
-	addTitleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#5FAFFF")).
-			MarginBottom(1)
+	_ = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#5FAFFF")).
+		MarginBottom(1)
 
 	addSelectedStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#FFAF00")).

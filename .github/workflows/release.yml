@@ -43,10 +43,10 @@ jobs:
           # Check if it's a merge from devel or manual dispatch
           if [[ "$COMMIT_MSG" == *"Merge"* && "$COMMIT_MSG" == *"devel"* ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] Release triggered: Merge from devel detected or manual dispatch"
+            echo "✅ Release triggered: Merge from devel detected or manual dispatch"
           else
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "[SKIP] Skipping release: Not a merge from devel"
+            echo "⏭️  Skipping release: Not a merge from devel"
           fi
 
       - name: Get latest tag
@@ -58,7 +58,7 @@ jobs:
             LATEST_TAG="v0.0.0"
           fi
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-          echo "[INFO] Latest tag: $LATEST_TAG"
+          echo "📌 Latest tag: $LATEST_TAG"Just
 
       - name: Bump version
         id: bump
@@ -91,7 +91,7 @@ jobs:
           
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "[INFO] New version: v$NEW_VERSION (${BUMP_TYPE} bump)"
+          echo "🚀 New version: v$NEW_VERSION (${BUMP_TYPE} bump)"
 
       - name: Create and push tag
         if: steps.check.outputs.should_release == 'true'
@@ -104,7 +104,7 @@ jobs:
           git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
           git push origin "v${NEW_VERSION}"
           
-          echo "[SUCCESS] Created and pushed tag v${NEW_VERSION}"
+          echo "✅ Created and pushed tag v${NEW_VERSION}"
 
   build:
     name: Build (${{ matrix.os }}-${{ matrix.arch }})
@@ -181,7 +181,7 @@ jobs:
           CLIENT_BINARY="openpasswd-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
           SERVER_BINARY="openpasswd-server-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
           
-          echo "[BUILD] Building ${CLIENT_BINARY} and ${SERVER_BINARY}"
+          echo "🔨 Building ${CLIENT_BINARY} and ${SERVER_BINARY}"
           
           # Build client
           go build -ldflags="-X 'github.com/r2unit/openpasswd/pkg/version.Version=${VERSION}' \
@@ -205,7 +205,7 @@ jobs:
           sha256sum "${CLIENT_BINARY}" > "${CLIENT_BINARY}.sha256"
           sha256sum "${SERVER_BINARY}" > "${SERVER_BINARY}.sha256"
           
-          echo "[SUCCESS] Built ${CLIENT_BINARY} and ${SERVER_BINARY}"
+          echo "✅ Built ${CLIENT_BINARY} and ${SERVER_BINARY}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -237,7 +237,7 @@ jobs:
         run: |
           mkdir -p ./dist
           find ./artifacts -type f -exec cp {} ./dist/ \;
-          echo "[ARTIFACTS] Release artifacts:"
+          echo "📦 Release artifacts:"
           ls -lah ./dist/
 
       - name: Generate changelog
@@ -292,33 +292,33 @@ jobs:
             fi
           }
           
-          echo "### Computer Client Binaries" >> release_notes.md
+          echo "### 💻 Client Binaries" >> release_notes.md
           echo "" >> release_notes.md
           
-          generate_download "openpasswd-linux-amd64" "Linux Linux (x64)"
-          generate_download "openpasswd-linux-arm64" "Linux Linux (ARM64)"
-          generate_download "openpasswd-linux-arm" "Linux Linux (ARMv7)"
-          generate_download "openpasswd-darwin-amd64" "macOS macOS (Intel)"
-          generate_download "openpasswd-darwin-arm64" "macOS macOS (Apple Silicon)"
-          generate_download "openpasswd-windows-amd64.exe" "Windows Windows (x64)"
-          generate_download "openpasswd-freebsd-amd64" "FreeBSD FreeBSD (x64)"
-          
-          echo "---" >> release_notes.md
-          echo "" >> release_notes.md
-          echo "### Server Server Binaries" >> release_notes.md
-          echo "" >> release_notes.md
-          
-          generate_download "openpasswd-server-linux-amd64" "Linux Linux (x64)"
-          generate_download "openpasswd-server-linux-arm64" "Linux Linux (ARM64)"
-          generate_download "openpasswd-server-linux-arm" "Linux Linux (ARMv7)"
-          generate_download "openpasswd-server-darwin-amd64" "macOS macOS (Intel)"
-          generate_download "openpasswd-server-darwin-arm64" "macOS macOS (Apple Silicon)"
-          generate_download "openpasswd-server-windows-amd64.exe" "Windows Windows (x64)"
-          generate_download "openpasswd-server-freebsd-amd64" "FreeBSD FreeBSD (x64)"
+          generate_download "openpasswd-linux-amd64" "🐧 Linux (x64)"
+          generate_download "openpasswd-linux-arm64" "🐧 Linux (ARM64)"
+          generate_download "openpasswd-linux-arm" "🐧 Linux (ARMv7)"
+          generate_download "openpasswd-darwin-amd64" "🍎 macOS (Intel)"
+          generate_download "openpasswd-darwin-arm64" "🍎 macOS (Apple Silicon)"
+          generate_download "openpasswd-windows-amd64.exe" "🪟 Windows (x64)"
+          generate_download "openpasswd-freebsd-amd64" "🔱 FreeBSD (x64)"
           
           echo "---" >> release_notes.md
           echo "" >> release_notes.md
-          echo "## Security Verify Downloads" >> release_notes.md
+          echo "### 🖥️ Server Binaries" >> release_notes.md
+          echo "" >> release_notes.md
+          
+          generate_download "openpasswd-server-linux-amd64" "🐧 Linux (x64)"
+          generate_download "openpasswd-server-linux-arm64" "🐧 Linux (ARM64)"
+          generate_download "openpasswd-server-linux-arm" "🐧 Linux (ARMv7)"
+          generate_download "openpasswd-server-darwin-amd64" "🍎 macOS (Intel)"
+          generate_download "openpasswd-server-darwin-arm64" "🍎 macOS (Apple Silicon)"
+          generate_download "openpasswd-server-windows-amd64.exe" "🪟 Windows (x64)"
+          generate_download "openpasswd-server-freebsd-amd64" "🔱 FreeBSD (x64)"
+          
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## 🔐 Verify Downloads" >> release_notes.md
           echo "" >> release_notes.md
           echo "To verify the integrity of your download:" >> release_notes.md
           echo "" >> release_notes.md
@@ -353,4 +353,4 @@ jobs:
           git config user.email "actions@github.com"
           git tag -f latest
           git push -f origin latest
-          echo "[SUCCESS] Updated 'latest' tag"
+          echo "✅ Updated 'latest' tag"
